@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 from setuptools import setup, find_packages
 
-with open("README.md") as readme:
+with open("README.md", encoding='utf8') as readme:
   long_description = readme.read()
 
 setup(

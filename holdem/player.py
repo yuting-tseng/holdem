@@ -34,11 +34,14 @@ class Player(object):
   RAISE = 2
   FOLD = 3
 
-  def __init__(self, player_id, stack=2000, emptyplayer=False):
+  def __init__(self, player_id, stack=1000, emptyplayer=False, playername="", reloadCount=0):
     self.player_id = player_id
+    self.playername = playername
 
+    self.reloadCount = reloadCount
     self.hand = []
     self.stack = stack
+    self._init_stack = stack
     self.currentbet = 0
     self.lastsidepot = 0
     self._seat = -1
@@ -46,11 +49,14 @@ class Player(object):
 
     # flags for table management
     self.emptyplayer = emptyplayer
-    self.betting = False
+    self.betting = 0
     self.isallin = False
     self.playing_hand = False
     self.playedthisround = False
     self.sitting_out = True
+
+  def get_name(self):
+    return self.playername
 
   def get_seat(self):
     return self._seat
@@ -61,7 +67,7 @@ class Player(object):
   def reset_hand(self):
     self._hand = []
     self.playedthisround = False
-    self.betting = False
+    self.betting = 0
     self.isallin = False
     self.currentbet = 0
     self.lastsidepot = 0
@@ -72,6 +78,7 @@ class Player(object):
     if not bet_size:
       return
     self.stack -= (bet_size - self.currentbet)
+    self.betting += (bet_size - self.currentbet)
     self.currentbet = bet_size
     if self.stack == 0:
       self.isallin = True
@@ -83,7 +90,7 @@ class Player(object):
     return (self.get_seat(), self.stack, self.playing_hand, self.betting, self.player_id)
 
   def reset_stack(self):
-    self.stack = 2000
+    self.stack = self._init_stack
 
   def update_localstate(self, table_state):
     self.stack = table_state.get('stack')
@@ -117,13 +124,13 @@ class Player(object):
         raise error.Error('invalid action ({}) must be raise (2), call (1), or fold (3)'.format(action_idx))
       if action_idx == Player.RAISE:
         if raise_amount < minraise:
-          raise error.Error('raise must be greater than minraise {}'.format(minraise))
+          raise error.Error('raise must be greater than minraise {} but {}'.format(minraise, raise_amount))
         if raise_amount > self.stack:
           raise error.Error('raise must be less than maxraise {}'.format(self.stack))
         move_tuple = ('raise', raise_amount)
       elif action_idx == Player.CALL:
         move_tuple = ('call', tocall)
-      elif choice == Player.FOLD:
+      elif action_idx == Player.FOLD:
         move_tuple = ('fold', -1)
       else:
         raise error.Error('invalid action ({}) must be raise (2), call (1), or fold (3)'.format(action_idx))

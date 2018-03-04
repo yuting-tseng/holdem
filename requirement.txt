@@ -1,0 +1,3 @@
+gym
+git+https://github.com/chuchuhao/treys
+websocket-client

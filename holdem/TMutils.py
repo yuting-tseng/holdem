@@ -514,7 +514,7 @@ class ClientPlayer():
                     p_card = [-1, -1]
                     pass
                 player_info.hand = p_card
-                player_info.handrank = self._evaluator.evaluate(player_info.hand, self.community)
+                # player_info.handrank = self._evaluator.evaluate(player_info.hand, self.community)
 
             if self._playing_live:
                 print("[LIVE] Cycle End")

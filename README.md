@@ -1,9 +1,9 @@
 # holdem
-## known issue
-[] handling of connection error
-[] multiple cycle of gym environment
-[] crash when all player fold in gyn environment
-[] sidepot functionality
+** known issue **
++ handling of connection error
++ multiple cycle of gym environment
++ crash when all player fold in gyn environment
++ sidepot
 
 ---
 # 趨勢 德州撲克 使用介紹

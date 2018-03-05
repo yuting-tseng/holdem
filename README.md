@@ -1,5 +1,101 @@
 # holdem
 
+# 中文使用介紹
+## OpenAI Gym
+[OpenAI Gym 官方網址](https://gym.openai.com/docs/)
+> Gym is a toolkit for developing and comparing reinforcement learning algorithms.
+> Gym 提供了一個測試 Reinforcement Learning的環境框架, 並且沒有對 Agent做任何假設
+
+## 此版本介紹
+
+這一個版本是從 wenkesj/holdem改寫，主要多增加了以下功能
++ 修改因 openai/gym 在 [commit #836](https://github.com/openai/gym/pull/836) spec change所造成的 crash
++ 新增 cycle attribute (發牌一輪為 round, 玩一次為 cycle)
++ 新增 Interface連接 TM server
++ 新增 agent template (必須提供兩個 method讓 controller呼叫 (controller為溝通 environment與 agent的橋梁)
+
+另外有改寫 ihendley/treys，這一個repo是改寫自 */deuce為提供 poker相關計算與管理
++ 修改 f-string not supported under python 3.6
++ 修改 serup.py在 windows paltform造成的 encoding issue (cp950 decode error)
+
+## 安裝方法
+```sh
+# better run under virtualenv
+git clone https://github.com/chuchuhao/holdem.git
+pip install gym
+pip install websocket-client
+pip install git+https://github.com/chuchuhao/treys
+```
+
+## 使用方法
+請參考 *_examplu.py
+
+### Agent需要提供的 interface
+Agent必須為一個 class並且提供下面兩個 method
++ `takeAction(self, state, playerid)` return ACTION (namedtupled)
++ `getReload(self, state)` reutrn {True/ False}
+
+### 如何參與 TM holdem
+#### Train Phase
+- 先將 下面會介紹的 state tuple verorized model要吃的格式
+- 可以利用 env利用指定 policy來生成 training data做 batch learning (off-plicy or supervised training)
+- 可以利用 env並搭配 RL algorithm來做 online training
+- 自行撰寫 expert rule
+
+#### Valid Phase
+- 可以利用 env來觀察 model行為
+
+#### Test Phase
+- 連上 TM Server做測試
+
+## State介紹
+
+:warning: **這裡的 state與 openai/gym裡面所設定的 observation space不完全一樣, 是包裝給 agent用的**
+
+agent會接到一個由 namedtuple所包成的 state, 包含下列三個項目
+
+0. player_states: a tuple of player state (tuple長度為此桌有 player的數量)
+    + `emptyplayer`, (boolean), 0 seat is empty, 1 is not 表示此此 item有沒有玩家註冊
+    + `seat`, (number), 玩家的 seat number, seat也是 玩家的初始順序, 過程中不會改變
+    + `stack`, (number), players current stack(chip) 玩家剩餘籌碼
+    + `playing_hand`, (boolean), 玩家目前有在玩此 cycle
+    + `handrank`, (number), 由 treys.Evaluator.evaluate(hand, community), 每一個 round結束後都會計算
+    + `playedthisround`, (boolean), 玩家是否已經玩過此 round (1 cycle has 4 rounds)
+    + `betting`, (number), 玩家在此 cycle已下注的金額
+    + isallin, (boolean), 0 not all in, 1 all in
+    + lastsidepot, (number), resolve when someone all in  <NOT USING NOW> 目前 sidepot相關功能都沒有使用
+    + reloadCount, (number), only used when TM's version <ONLY TM USED> 在 openai/gym中沒有適用到 reload功能
+    + hand, (list(2)), information about two card <IN TREYS FORMAT> 必須使用 TREYS提供的 API解讀
+
+1. community_state: 這裡所提到的 id = seat number
+    + button, (number), the id of bigblind 莊家位置 (順序: 莊家> 小盲 > 大盲)
+    + smallblind, (number), the current small blind amount 小盲注籌碼數
+    + bigblind, (number), the current big blind amount  大盲注籌碼數
+    + totalpot, (number), the current total amount in the community pot 所有人下注的總籌碼數
+    + lastraise, (number), the last posted raise amount 最後一個人 raise的籌碼數
+    + call_price, (number), minimum required raise amount, (acuumulate all round) 最低 raise的籌碼門檻
+    + to_call, (number), the amount required to call, (current round) 最低 call的籌碼門檻
+    + current_player, (id), the id of current player 目前決策的玩家 id
+
+2. community_cards: 長度為 5的 list, 每一個 item唯一張卡 <IN TREYS FORMAT>
+
+* card -1時代表牌面未公布, 另外 card的值為一 Number須由 TREY解讀
+
+## Action介紹
+
+:warning: **這裡的 action與 openai/gym裡面所設定的 action space不完全一樣, 是包裝給 agent用的**
+
+agent要做出一個 action的時候, 必須丟出一個 ACTION的 namedtuple
++ `action`: 由 action_table() class提供, 這裡與 TM提供的 interface稍有不同, 但會自動轉換
+    + `action_table.CHECK` 歲月靜好 (不下注)
+    + `action_table.CALL` 跟 (下注, 但不指定金額)
+    + `action_table.RAISE` 提高開殺 (下注, 指定親俄)
+    + `action_table.FOLD` 放棄 GG (不下注放棄)
++ `amount`: 當地一個選額為 RAISE時, 會查看此一項目
+
+
+# 以下為原版  wenkesj/holdem版本的 readme
+
 :warning: **This is an experimental API, it will most definitely contain bugs, but that's why you are here!**
 
 ```sh

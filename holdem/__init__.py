@@ -6,19 +6,19 @@ from .utils import card_to_str, hand_to_str, safe_actions, model_list_action, ac
 from .TMutils import ClientPlayer
 
 register(
- 	id='TexasHoldem-v0',
- 	entry_point='holdem.env:TexasHoldemEnv',
-  kwargs={'n_seats': 2, 'debug': False},
+	id='TexasHoldem-v0',
+	entry_point='holdem.env:TexasHoldemEnv',
+	kwargs={'n_seats': 2, 'debug': False},
 )
 
 register(
- 	id='TexasHoldem-v1',
- 	entry_point='holdem.env:TexasHoldemEnv',
-  kwargs={'n_seats': 4, 'debug': False},
+	id='TexasHoldem-v1',
+	entry_point='holdem.env:TexasHoldemEnv',
+	kwargs={'n_seats': 4, 'debug': False},
 )
 
 register(
- 	id='TexasHoldem-v2',
- 	entry_point='holdem.env:TexasHoldemEnv',
-  kwargs={'n_seats': 10, 'debug': False},
+	id='TexasHoldem-v2',
+	entry_point='holdem.env:TexasHoldemEnv',
+	kwargs={'n_seats': 10, 'debug': False},
 )

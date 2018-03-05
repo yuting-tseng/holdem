@@ -68,49 +68,49 @@ class TexasHoldemEnv(Env, utils.EzPickle):
 
     self.observation_space = spaces.Tuple([
       spaces.Tuple([                # # **players info**
-        spaces.MultiDiscrete([
-          1,                   #  (boolean) is_emptyplayer
-          n_seats - 1,         #  (numbers) number of seat
-          max_limit,           #  (numbers) stack
-          1,                   #  (boolean) is_playing_hand
-          max_limit,           #  (numbers) handrank, need_error_msg?  (0 could be no rank, no error_msg needed
-          1,                   #  (boolean) is_playedthisround
-          max_limit,           #  (numbers) is_betting
-          1,                   #  (boolean) isallin
-          max_limit,           #  (numbers) last side pot
-        ]),
-        spaces.Tuple([
-          spaces.MultiDiscrete([    # # **players hand**
-            1,                # (boolean) is_avalible
-            n_suits,          #  (catagory) suit,
-            n_ranks,          #  (catagory) rank.
-          ])
-        ] * n_pocket_cards)
-      ] * n_seats),
+                     spaces.MultiDiscrete([
+                       1,                   #  (boolean) is_emptyplayer
+                       n_seats - 1,         #  (numbers) number of seat
+                       max_limit,           #  (numbers) stack
+                       1,                   #  (boolean) is_playing_hand
+                       max_limit,           #  (numbers) handrank, need_error_msg?  (0 could be no rank, no error_msg needed
+                       1,                   #  (boolean) is_playedthisround
+                       max_limit,           #  (numbers) is_betting
+                       1,                   #  (boolean) isallin
+                       max_limit,           #  (numbers) last side pot
+                     ]),
+                     spaces.Tuple([
+                                    spaces.MultiDiscrete([    # # **players hand**
+                                      1,                # (boolean) is_avalible
+                                      n_suits,          #  (catagory) suit,
+                                      n_ranks,          #  (catagory) rank.
+                                    ])
+                                  ] * n_pocket_cards)
+                   ] * n_seats),
       spaces.Tuple([
-        spaces.Discrete(n_seats - 1), # big blind location
-        spaces.Discrete(max_limit),   # small blind
-        spaces.Discrete(max_limit),   # big blind
-        spaces.Discrete(max_limit*n_seats),   # pot amount
-        spaces.Discrete(max_limit),   # last raise
-        spaces.Discrete(max_limit),   # minimum amount to raise
-        spaces.Discrete(max_limit),   # how much needed to call by current player.
-        spaces.Discrete(n_seats - 1), # current player seat location.
-        spaces.MultiDiscrete([        # community cards
-          1,                # (boolean) is_avalible
-          n_suits,          # (catagory) suit
-          n_ranks,          # (catagory) rank
-          1,                # (boolean) is_flopped
-        ]),
-      ] * n_stud),
+                     spaces.Discrete(n_seats - 1), # big blind location
+                     spaces.Discrete(max_limit),   # small blind
+                     spaces.Discrete(max_limit),   # big blind
+                     spaces.Discrete(max_limit*n_seats),   # pot amount
+                     spaces.Discrete(max_limit),   # last raise
+                     spaces.Discrete(max_limit),   # minimum amount to raise
+                     spaces.Discrete(max_limit),   # how much needed to call by current player.
+                     spaces.Discrete(n_seats - 1), # current player seat location.
+                     spaces.MultiDiscrete([        # community cards
+                       1,                # (boolean) is_avalible
+                       n_suits,          # (catagory) suit
+                       n_ranks,          # (catagory) rank
+                       1,                # (boolean) is_flopped
+                     ]),
+                   ] * n_stud),
     ])
 
     self.action_space = spaces.Tuple([
-      spaces.MultiDiscrete([
-        3,                     # action_id
-        max_limit,             # raise_amount
-      ]),
-    ] * n_seats)
+                                       spaces.MultiDiscrete([
+                                         3,                     # action_id
+                                         max_limit,             # raise_amount
+                                       ]),
+                                     ] * n_seats)
 
   def add_player(self, seat_id, stack=1000):
     """Add a player to the environment seat with the given stack (chipcount)"""
@@ -137,8 +137,8 @@ class TexasHoldemEnv(Env, utils.EzPickle):
       pass
 
   def seed(self, seed=None):
-      self.np_random, seed = seeding.np_random(seed)
-      return [seed]
+    self.np_random, seed = seeding.np_random(seed)
+    return [seed]
 
   def reset(self):
     self._reset_game()
@@ -146,7 +146,7 @@ class TexasHoldemEnv(Env, utils.EzPickle):
     [self._smallblind, self._bigblind] = TexasHoldemEnv.BLIND_INCREMENTS[self._blind_index]
     self._cycle += 1
     if self._cycle % self.n_seats == 0:
-        self._increment_blinds()
+      self._increment_blinds()
 
     if (self.emptyseats < len(self._seats) - 1):
       players = [p for p in self._seats if p.playing_hand]
@@ -196,7 +196,7 @@ class TexasHoldemEnv(Env, utils.EzPickle):
         return self._get_current_step_returns(False)
 
       move = self._current_player.player_move(
-          self._output_state(self._current_player), actions[self._current_player.player_id])
+        self._output_state(self._current_player), actions[self._current_player.player_id])
 
       if move[0] == 'call':
         self._player_bet(self._current_player, self._tocall)
@@ -250,7 +250,7 @@ class TexasHoldemEnv(Env, utils.EzPickle):
     print('-' + hand_to_str(state.community_card))
     print('players:')
     for idx, playerstate in enumerate(state.player_states):
-        print('{}{}stack: {}'.format(idx, hand_to_str(playerstate.hand), self._seats[idx].stack))
+      print('{}{}stack: {}'.format(idx, hand_to_str(playerstate.hand), self._seats[idx].stack))
     #for idx, hand in enumerate(player_hands):
     #  print('{}{}stack: {}'.format(idx, hand_to_str(hand), self._seats[idx].stack))
 
@@ -307,8 +307,8 @@ class TexasHoldemEnv(Env, utils.EzPickle):
   def _first_to_act(self, players):
     if self._round == 0 and len(players) == 2:
       return self._next(sorted(
-          players + [self._seats[self._button]], key=lambda x:x.get_seat()),
-          self._seats[self._button])
+        players + [self._seats[self._button]], key=lambda x:x.get_seat()),
+        self._seats[self._button])
     try:
       first = [player for player in players if player.get_seat() > self._button][0]
     except IndexError:

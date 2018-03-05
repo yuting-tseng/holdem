@@ -2,8 +2,6 @@
 # -*- coding:utf-8 -*-
 import json
 from websocket import create_connection
-import sys
-import os
 import hashlib
 from .utils import hand_to_str, format_action, PLAYER_STATE, COMMUNITY_STATE, STATE, ACTION, action_table, card_str_to_list
 from .player import Player
@@ -11,24 +9,26 @@ from treys import Card, Deck, Evaluator
 
 ACCEPTED_ACTION = ["bet", "call", "raise", "check", "fold", "allin"]
 
-
 def listen_to_state():
     return
 
 def packed_action():
     return
 
-
 class ClientPlayer():
-    def __init__(self, server_uri, name, model, debug=False):
+    def __init__(self, server_uri, name, model, debug=False, playing_live=False):
         self._server_uri = server_uri
         self._debug = debug
+        self._playing_live = playing_live
+
+        # Conncetion Setting
         self.ws = ""
         self._name = str(hashlib.md5(name.encode('utf-8')).hexdigest())
         self._nick_name = name
+
+        # model setting
         self._model = model
         self._room_id = "217" # tableNumber
-        self.cycle = 0
 
         # community_information
         self._round = 0
@@ -37,9 +37,8 @@ class ClientPlayer():
         self._bigblind = 0
 
         self._tableNumber = ""
-        self._player_name_list = list()
 
-        self._cycle = 0
+        self._cycle = 1
         self._evaluator = Evaluator()
 
         self.community = []
@@ -50,7 +49,7 @@ class ClientPlayer():
         self._tocall = 0
         self._lastraise = 0
         self._last_player = None
-        self._last_actions = None
+        self._last_action = None
 
         #  player_information
         self.n_seats = 10
@@ -97,7 +96,7 @@ class ClientPlayer():
                 int(player.betting),
                 int(player.isallin),
                 int(player.lastsidepot),
-                0,
+                int(player.reloadCount),
                 self._pad(player.hand, 2, -1)
             )
             player_states.append(player_features)
@@ -115,26 +114,30 @@ class ClientPlayer():
         return STATE(tuple(player_states), community_states, self._pad(self.community, 5, -1))
 
     def render(self, mode='human', close=False):
-        print('Cycle {}, total pot: {}'.format(self._cycle, self._totalpot))
-        if self._last_actions is not None:
-            pid = self._last_player.player_id
-            print('last action by player {}:'.format(pid) + '\t' + format_action(self._last_player,
-                                                                                 self._last_actions[pid]))
-
-        state = self._get_current_state()
-
-        # (player_infos, player_hands) = zip(*state.player_state)
+        print('Cycle {}, total pot: {} >>>>>>>>>>>>>'.format(self._cycle, self._totalpot))
+        if self._last_action is not None:
+            print('last action by player {} with action {}'.format(self._last_player, self._last_action))
+        state = self.get_current_state()
 
         print('community:')
         print('-' + hand_to_str(state.community_card))
         print('players:')
         for idx, playerstate in enumerate(state.player_states):
-            print('{}{}stack: {}'.format(idx, hand_to_str(playerstate.hand), self._seats[idx].stack))
-        # for idx, hand in enumerate(player_hands):
-        #  print('{}{}stack: {}'.format(idx, hand_to_str(hand), self._seats[idx].stack))
+            if playerstate.emptyplayer == False:
+                print('{}{}stack: {}'.format(idx, hand_to_str(playerstate.hand), self._seats[idx].stack))
+        print("<<<<<<<<<<<")
 
     def _reset(self):
-        self.cycle += 1
+        for player_info in self._seats:
+            if not player_info.emptyplayer:
+                player_info.reset_hand()
+        self.community = []
+        self._current_sidepot = 0
+        self._totalpot = 0
+        self._side_pots = [0] * len(self._seats)
+        self._last_player = None
+        self._last_action = None
+        self._cycle += 1
 
     def __roundNameToRound(self, rounName):
         if "Deal":
@@ -166,7 +169,7 @@ class ClientPlayer():
         return
 
     def _send_action(self, model_action):
-        ''' Not goinf to check whether the action avalble'''
+        ''' Not going to check whether the action available '''
         if model_action.action == action_table.CHECK:
             self.ws.send(json.dumps({
                 "eventName": "__action",
@@ -198,16 +201,27 @@ class ClientPlayer():
             }))
         return
 
+    def _player_bet(self, player, total_bet):
+        # relative_bet = bet on this round, not accumulative
+        safe_bet = min(player.stack, total_bet)
+        player.bet(safe_bet)
+
+        self._totalpot += safe_bet
+        self._tocall = max(self._tocall, total_bet)
+        if self._tocall > 0:
+            self._tocall = max(self._tocall, self._bigblind)
+        self._lastraise = max(self._lastraise, safe_bet)
+
     def _handle_event(self, msg, data):
         if self._debug:
-            print("Reveice Message:  [{}]".format(msg))
+            print("[DEBUG] Event Trigger:  [{}]".format(msg))
 
         if msg[:len("__new_peer")] == "__new_peer":
-            return False # not interesting
+            return False
         elif msg == "__join":
-            return False # TODO
+            return False
         elif msg == "__game_prepare":
-            return False # not interesting
+            return False
         elif msg == "__new_round":
             # No avtion, update state
             self._tocall = 0
@@ -249,6 +263,28 @@ class ClientPlayer():
             self._tocall = int(data["table"]["bigBlind"]["amount"])
             self._current_player = current_player_seat
 
+            # Update Player Information
+            for p in data["players"]:
+                i = self.__getPlayerSeatByName(p["playerName"])
+                player_info = self._player_dict[i]
+                player_info.playedthisround = False
+                player_info.stack = p["chips"]
+                player_info.playing_hand = not p["folded"]
+                player_info.isallin=p["allIn"]
+                player_info.sitting_out=not p["isSurvive"]
+                player_info.reloadCount=p["reloadCount"]
+                player_info.betting = p["bet"]
+                player_info.currentbet = 0 # p["roundBet"]
+                try:
+                    if len(p["cards"]) == 2:
+                        p_card = [card_str_to_list(p["cards"][0]),card_str_to_list(p["cards"][1])]
+                    else:
+                        p_card = [-1, -1]
+                except KeyError:
+                    p_card = [-1, -1]
+                    pass
+                player_info.hand = p_card
+
             return False
 
         elif msg == "__start_reload": # Might Action
@@ -268,8 +304,7 @@ class ClientPlayer():
 
         elif msg == "__deal": # No Action
             # Update player_states
-            self._tocall = 0
-            self._lastraise = 0
+            self._new_round()
 
             for p in data["players"]:
                 i = self.__getPlayerSeatByName(p["playerName"])
@@ -314,20 +349,19 @@ class ClientPlayer():
             self._tableNumber = data["tableNumber"]
             my_seat = self.__getPlayerSeatByName(self._name)
             if my_seat == -1:
-                print(self._name)
-                print(self._player_dict)
+                print("[ERROR] Cant found my seat with name {} and dict {} ", self._name, self._player_dict)
             # Update player_states Information
             if len(data["self"]["cards"]) == 2:
                 p_card = [card_str_to_list(data["self"]["cards"][0]), card_str_to_list(data["self"]["cards"][1])]
             else:
-                print("API Failed in {}".format(msg))
+                print("[ERROR] API Failed in {}".format(msg))
 
-            player_info = self._player_dict[my_seat]
-            player_info.playedthisround = True
-            player_info.stack = data["self"]["chips"]
-            player_info.playing_hand = not data["self"]["folded"]
-            player_info.isallin=data["self"]["allIn"]
-            player_info.sitting_out=data["self"]["isSurvive"]
+            my_player_info = self._player_dict[my_seat]
+            my_player_info.playedthisround = True
+            my_player_info.stack = data["self"]["chips"]
+            my_player_info.playing_hand = not data["self"]["folded"]
+            my_player_info.isallin=data["self"]["allIn"]
+            my_player_info.sitting_out=data["self"]["isSurvive"]
 
             self_bet = data["self"]["bet"] # money already in pot
             self_minbet = data["self"]["minBet"] # minimun to call
@@ -360,34 +394,141 @@ class ClientPlayer():
             model_action = self._model.takeAction(self.get_current_state(), my_seat)
             self._send_action(model_action)
 
+            self._last_player = my_seat # my_player_info
+            if model_action.action == action_table.RAISE:
+                self._last_action = "raise"
+                self._player_bet(my_player_info, model_action.amount)
+                if self._debug:
+                    print('[DEBUG] Me', my_seat, "raise", model_action.amount)
+            elif model_action.action == action_table.CHECK:
+                self._last_action = "check"
+                self._player_bet(my_player_info, model_action.amount)
+                if self._debug:
+                    print('[DEBUG] Me', my_seat, "check", model_action.amount)
+            elif model_action.action == action_table.FOLD:
+                self._last_action = "fold"
+                my_player_info.playing_hand = False
+                if self._debug:
+                    print('[DEBUG] Me', my_seat, "fold")
+            elif model_action.action == action_table.CALL:
+                self._last_action = "call"
+                self._player_bet(my_player_info, self._tocall)
+                if self._debug:
+                    print('[DEBUG] Me', my_seat, "call", self._tocall)
+
+            # Update player information and render
+            if self._playing_live:
+                self.render(mode='human')
             return False # not interesting
 
         elif msg == "__show_action": # no Action
             actioned_id = self.__getPlayerSeatByName(data["action"]["playerName"])
+            self._current_player = actioned_id
+
             cur_round = self.__roundNameToRound(data["table"]["roundName"])
             if self._debug:
-                print("seat", actioned_id, "do some action ")
+                print("[BEBUG] Seat {} do action [{}]".format(actioned_id, data["action"]["action"]))
             player_info = self._player_dict[actioned_id]
-
             player_info.playedthisround = True
             player_info.stack = data["action"]["chips"]
+
+            # do some action
+            self._last_action = data["action"]["action"]
+            self._last_player = actioned_id
             if data["action"]["action"] == "bet" or data["action"]["action"] == "raise" or data["action"]["action"] == "allin":
                 self._lastraise = data["action"]["amount"]
+                self._player_bet(player_info, data["action"]["amount"])
+                if self._debug:
+                    print('[DEBUG] Player', self._current_player, data["action"]["action"], data["action"]["amount"])
+            elif data["action"]["action"] == "check":
+                self._player_bet(player_info, data["action"]["amount"])
+                if self._debug:
+                    print('[DEBUG] Player', self._current_player, "check", data["action"]["amount"])
+            elif data["action"]["action"] == "call":
+                self._tocall = data["action"]["amount"]
+                self._player_bet(player_info, self._tocall)
+                if self._debug:
+                    print('[DEBUG] Player', self._current_player, "call", self._tocall)
+            elif data["action"]["action"] == "fold":
+                player_info.playing_hand = False
+                if self._debug:
+                    print('[DEBUG] Player', self._current_player, "fold")
+
+            for p in data["players"]:
+                i = self.__getPlayerSeatByName(p["playerName"])
+                player_info = self._player_dict[i]
+                player_info.stack = p["chips"]
+                player_info.playing_hand = not p["folded"]
+                player_info.isallin=p["allIn"]
+                player_info.sitting_out=not p["isSurvive"]
+                player_info.reloadCount=p["reloadCount"]
+                player_info.betting = p["bet"]
+                player_info.currentbet = 0 # p["roundBet"]
+                try:
+                    if len(p["cards"]) == 2:
+                        p_card = [card_str_to_list(p["cards"][0]),card_str_to_list(p["cards"][1])]
+                    else:
+                        p_card = [-1, -1]
+                except KeyError:
+                    p_card = [-1, -1]
+                    pass
+                player_info.hand = p_card
+
+            # Update player information and render
+            if self._playing_live:
+                self.render(mode='human')
+
+            # Update Community
             self._totalpot = data["table"]["totalBet"]
+            c_cards = list()
+            for c in data["table"]["board"]:
+                c_cards.append(card_str_to_list(c))
+            self.community = c_cards
+            # Not going to check name twice
+            self._smallblind = int(data["table"]["smallBlind"]["amount"])
+            self._bigblind = int(data["table"]["bigBlind"]["amount"])
+
             return False # not interesting
 
         elif msg == "__round_end":
             # no reply
             if self._debug:
-                print(data)
+                print("[DEBUG] {}".format(data))
+
+            for p in data["players"]:
+                i = self.__getPlayerSeatByName(p["playerName"])
+                player_info = self._player_dict[i]
+                player_info.stack = p["chips"]
+                player_info.playing_hand = not p["folded"]
+                player_info.isallin=p["allIn"]
+                player_info.sitting_out=not p["isSurvive"]
+                player_info.reloadCount=p["reloadCount"]
+                player_info.betting = p["bet"]
+                player_info.currentbet = 0 # p["roundBet"]
+                try:
+                    if len(p["cards"]) == 2:
+                        p_card = [card_str_to_list(p["cards"][0]),card_str_to_list(p["cards"][1])]
+                    else:
+                        p_card = [-1, -1]
+                except KeyError:
+                    p_card = [-1, -1]
+                    pass
+                player_info.hand = p_card
+                player_info.handrank = self._evaluator.evaluate(player_info.hand, self.community)
+
+            if self._playing_live:
+                print("[LIVE] Cycle End")
+                self.render(mode='human')
             self._reset()
             return False # not interesting
+
         elif msg == "__game_over":
             if self._debug:
-                print(data)
+                print("[DEBUG] {} {} ". format(msg, data))
             return True # not interesting
+
         else:
-            print("Error, Unknown event message [{}]".format(msg))
+            print("[Error] Unknown Event message [{}]".format(msg))
             return False
 
     def doListen(self):
@@ -400,17 +541,16 @@ class ClientPlayer():
                 }
             }))
             if self._debug:
-                print("Joined {}, hash: {}".format(self._nick_name, self._name))
+                print("[DEBUG] Me Joined {}, hash: {}".format(self._nick_name, self._name))
             while True:
-                print("keep waiting")
                 result = self.ws.recv()
-                print("recv {} [{}]".format(type(result), result))
+                if self._debug:
+                    print("[DEBUG] recv: {}".format(result))
                 msg = json.loads(result)
                 terminal = self._handle_event(msg["eventName"], msg["data"])
                 if terminal:
                     break
-            print("Game Over")
-        #except Exception as e:
-        except IOError as e:
-            print("Failed to doListern(): ", str(e))
+            print("[Message] Game Over")
+        except IOError as e: # TODO: find better way to handle exception
+            print("[ERROR] Failed to doListern(): ", str(e))
             self.doListen()

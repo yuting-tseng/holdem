@@ -22,10 +22,8 @@
 import gym
 import holdem
 import agent
-from holdem import PLAYER_STATE, COMMUNITY_STATE, STATE
 
 def lets_play(env, n_seats, model_list):
-  # reset environment, gather relevant observatio ns
   cur_state = env.reset()
 
   # display the table, cards and all
@@ -50,6 +48,7 @@ def lets_play(env, n_seats, model_list):
 
       print("reward(t+1)")
       print(rews)
+
       env.render(mode='human')
     print("final state")
     print(cur_state)
@@ -63,10 +62,10 @@ model_list = list()
 env.add_player(0, stack=1000) # add a player to seat 0 with 1000 "chips"
 model_list.append(agent.idiotModel())
 
-env.add_player(1, stack=2000) # add another player to seat 1 with 1000 "chips"
+env.add_player(1, stack=2000) # add another player to seat 1 with 2000 "chips"
 model_list.append(agent.idiotModel())
 
-env.add_player(2, stack=3000) # add another player to seat 2 with 1000 "chips"
+env.add_player(2, stack=3000) # add another player to seat 2 with 3000 "chips"
 model_list.append(agent.idiotModel())
 
 env.add_player(3, stack=1000) # add another player to seat 3 with 1000 "chips"

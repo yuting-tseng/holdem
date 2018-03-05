@@ -22,13 +22,12 @@ class idiotModel():
         return
 
     def takeAction(self, state, playerid):
-        ''' (Predict) Select Action under state'''
-        print("!!!!!!!!!!!!! I Do some Action ")
+        ''' (Predict/ Policy) Select Action under state'''
         if state.community_state.to_call > 0:
             if random.random() > 0.7 :
                 return ACTION(action_table.FOLD, 0)
             else:
-                return ACTION(action_table.CALL, 0)
+                return ACTION(action_table.CALL, state.community_state.to_call)
         else:
             if random.random() > 0.7:
                 return ACTION(action_table.RAISE, 50)
@@ -38,7 +37,7 @@ class idiotModel():
                 return ACTION(action_table.CHECK, 0)
 
     def getReload(self, state):
-        '''return True if reload is needed under state, otherwise False'''
+        '''return `True` if reload is needed under state, otherwise `False`'''
         if self.reload_left > 0:
             self.reload_left -= 1
             return True

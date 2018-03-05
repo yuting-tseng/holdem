@@ -1,6 +1,12 @@
 # holdem
+## known issue
+[] handling of connection error
+[] multiple cycle of gym environment
+[] crash when all player fold in gyn environment
+[] sidepot functionality
 
-# 中文使用介紹
+---
+# 趨勢 德州撲克 使用介紹
 ## OpenAI Gym
 [OpenAI Gym 官方網址](https://gym.openai.com/docs/)
 > Gym is a toolkit for developing and comparing reinforcement learning algorithms.

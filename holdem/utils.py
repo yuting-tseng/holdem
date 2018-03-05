@@ -103,7 +103,7 @@ def card_to_normal_str(card):
 def card_str_to_list(card_str):
     return Card.new(card_str[:1] + card_str[1:].lower())
 
-def hand_to_str(hand):
+def hand_to_str(hand, mode):
     output = " "
     for i in range(len(hand)):
         c = hand[i]
@@ -114,9 +114,15 @@ def hand_to_str(hand):
                 output += '[  ] '
             continue
         if i != len(hand) - 1:
-            output += str(Card.int_to_pretty_str(c)) + ','
+            if mode == "machine":
+                output += '[' + str(Card.int_to_str(c)) + '],'
+            else:
+                output += str(Card.int_to_pretty_str(c)) + ','
         else:
-            output += str(Card.int_to_pretty_str(c)) + ' '
+            if mode == "machine":
+                output += '[' + str(Card.int_to_str(c)) + '] '
+            else:
+                output += str(Card.int_to_pretty_str(c)) + ' '
     return output
 
 def safe_actions(cur_state, n_seats): #  play safe actions, check when no one else has raised, call when raised.

@@ -120,11 +120,11 @@ class ClientPlayer():
         state = self.get_current_state()
 
         print('community:')
-        print('-' + hand_to_str(state.community_card))
+        print('-' + hand_to_str(state.community_card, mode))
         print('players:')
         for idx, playerstate in enumerate(state.player_states):
             if playerstate.emptyplayer == False:
-                print('{}{}stack: {}'.format(idx, hand_to_str(playerstate.hand), self._seats[idx].stack))
+                print('{}{}stack: {}'.format(idx, hand_to_str(playerstate.hand, mode), self._seats[idx].stack))
         print("<<<<<<<<<<<")
 
     def _reset(self):

@@ -2,7 +2,7 @@
 from gym.envs.registration import register
 
 from .env import TexasHoldemEnv
-from .utils import card_to_str, hand_to_str, safe_actions, model_list_action, action_table, card_str_to_list, PLAYER_STATE, COMMUNITY_STATE, STATE, ACTION
+from .utils import card_to_str, hand_to_str, safe_actions, model_list_action, action_table, card_str_to_list, PLAYER_STATE, COMMUNITY_STATE, STATE, ACTION, card_to_normal_str
 from .TMutils import ClientPlayer
 
 register(

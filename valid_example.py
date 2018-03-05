@@ -49,7 +49,7 @@ def lets_play(env, n_seats, model_list):
       print("reward(t+1)")
       print(rews)
 
-      env.render(mode='human')
+      env.render(mode="machine")
     print("final state")
     print(cur_state)
     break
@@ -69,7 +69,7 @@ env.add_player(2, stack=3000) # add another player to seat 2 with 3000 "chips"
 model_list.append(agent.idiotModel())
 
 env.add_player(3, stack=1000) # add another player to seat 3 with 1000 "chips"
-model_list.append(agent.idiotModel())
+model_list.append(agent.smarterModel())
 
 
 # play out a hand

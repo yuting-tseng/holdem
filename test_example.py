@@ -4,8 +4,8 @@ import agent
 SERVER_URI = r"ws://allhands2018-beta.dev.spn.a1q7.net:3001"
 
 # Only One Player
-name="831_01"
-model = agent.idiotModel()
+name="dqn_agent"
+model = agent.dqnModel()
 client_player = holdem.ClientPlayer(SERVER_URI, name, model, debug=True, playing_live=True)
 
 client_player.doListen()

@@ -29,7 +29,7 @@ from .player import Player
 from .utils import hand_to_str, format_action, PLAYER_STATE, COMMUNITY_STATE, STATE
 
 class TexasHoldemEnv(Env, utils.EzPickle):
-  BLIND_INCREMENTS = [[10,25], [20,50], [40,100], [80,200], [160,400], [320,800], [640,1600], [1280, 3200], [2560, 6400], [5120, 12800]]
+  BLIND_INCREMENTS = [[10,20], [20,40], [40,80], [80,160], [160,320], [320,640], [640,1280], [1280, 2560], [2560, 5120], [5120, 10240]]
 
   def __init__(self, n_seats, max_limit=20000, debug=False):
     n_suits = 4                     # s,h,d,c

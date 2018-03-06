@@ -35,23 +35,24 @@ def lets_play(env, n_seats, model_list):
     while not cycle_terminal:
       #  play safe actions, check when no one else has raised, call when raised.
       # actions = holdem.safe_actions(cur_state, n_seats=n_seats)
-      print("state(t)")
-      for p in cur_state.player_states:
-        print(p)
-      print(cur_state.community_state)
+      
+      # print("state(t)")
+      # for p in cur_state.player_states:
+      #   print(p)
+      # print(cur_state.community_state)
 
       actions = holdem.model_list_action(cur_state, n_seats=n_seats, model_list=model_list)
       cur_state, rews, cycle_terminal, info = env.step(actions)
 
-      print("action(t), (CALL=1, RAISE=2, FOLD=3 , CHECK=0, [action, amount])")
-      print(actions)
+      # print("action(t), (CALL=1, RAISE=2, FOLD=3 , CHECK=0, [action, amount])")
+      # print(actions)
 
-      print("reward(t+1)")
-      print(rews)
+      # print("reward(t+1)")
+      # print(rews)
 
       env.render(mode="machine")
-    print("final state")
-    print(cur_state)
+    # print("final state")
+    # print(cur_state)
     break
 
 env = gym.make('TexasHoldem-v1') # holdem.TexasHoldemEnv(2)
@@ -59,16 +60,16 @@ env = gym.make('TexasHoldem-v1') # holdem.TexasHoldemEnv(2)
 model_list = list()
 
 # start with 4 players
-env.add_player(0, stack=1000) # add a player to seat 0 with 1000 "chips"
-model_list.append(agent.dqnModel(env))
+env.add_player(0, stack=3000) # add a player to seat 0 with 1000 "chips"
+model_list.append(agent.dqnModel())
 
-env.add_player(1, stack=2000) # add another player to seat 1 with 2000 "chips"
+env.add_player(1, stack=3000) # add another player to seat 1 with 2000 "chips"
 model_list.append(agent.idiotModel())
 
 env.add_player(2, stack=3000) # add another player to seat 2 with 3000 "chips"
 model_list.append(agent.idiotModel())
 
-env.add_player(3, stack=1000) # add another player to seat 3 with 1000 "chips"
+env.add_player(3, stack=3000) # add another player to seat 3 with 1000 "chips"
 model_list.append(agent.smarterModel())
 
 

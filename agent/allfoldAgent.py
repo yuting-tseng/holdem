@@ -3,7 +3,7 @@ from enum import Enum
 from holdem import PLAYER_STATE, COMMUNITY_STATE, STATE, ACTION, action_table
 import random
 
-class allFlodModel():
+class allFoldModel():
     def __init__(self):
         self._nothing = "test"
         self.reload_left = 2
@@ -23,7 +23,10 @@ class allFlodModel():
 
     def takeAction(self, state, playerid):
         ''' (Predict/ Policy) Select Action under state'''
-        return ACTION(action_table.FOLD, 0)
+        if state.community_state.to_call == 0:
+            return ACTION(action_table.CHECK, 0)
+        else:
+            return ACTION(action_table.FOLD, 0)
 
     def getReload(self, state):
         '''return `True` if reload is needed under state, otherwise `False`'''

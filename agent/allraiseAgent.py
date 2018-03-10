@@ -3,7 +3,7 @@ from enum import Enum
 from holdem import PLAYER_STATE, COMMUNITY_STATE, STATE, ACTION, action_table
 import random
 
-class allCallModel():
+class allRaiseModel():
     def __init__(self):
         self._nothing = "test"
         self.reload_left = 2
@@ -23,10 +23,7 @@ class allCallModel():
 
     def takeAction(self, state, playerid):
         ''' (Predict/ Policy) Select Action under state'''
-        if state.community_state.to_call == 0:
-            return ACTION(action_table.CHECK, 0)
-        else:
-            return ACTION(action_table.CALL, state.community_state.to_call)
+        return ACTION(action_table.RAISE, state.community_state.to_call * 2)
 
     def getReload(self, state):
         '''return `True` if reload is needed under state, otherwise `False`'''

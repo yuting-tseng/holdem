@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 import json
 from websocket import create_connection
+from websocket._exceptions import WebSocketConnectionClosedException
 import hashlib
 from .utils import hand_to_str, format_action, PLAYER_STATE, COMMUNITY_STATE, STATE, ACTION, action_table, card_str_to_list
 from .player import Player
@@ -518,7 +519,7 @@ class ClientPlayer():
 
             if self._playing_live:
                 print("[LIVE] Cycle End")
-                self.render(mode='human')
+                self.render(mode='machine')
             self._reset()
             return False # not interesting
 
@@ -550,7 +551,13 @@ class ClientPlayer():
                 terminal = self._handle_event(msg["eventName"], msg["data"])
                 if terminal:
                     break
+
             print("[Message] Game Over")
+            try:
+                self.ws.close()
+            except WebSocketConnectionClosedException:
+                print("[ERROR] WebSocketConnectionClosedException, ignore")
+                pass
         except IOError as e: # TODO: find better way to handle exception
             print("[ERROR] Failed to doListern(): ", str(e))
             self.doListen()

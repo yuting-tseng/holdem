@@ -26,7 +26,7 @@ CHAR_NUM_TO_INT = {
         'A': 0,
 }
 
-class smarterModel():
+class debugModel():
     def __init__(self):
         self._nothing = "test"
         self.reload_left = 2
@@ -72,7 +72,14 @@ class smarterModel():
 
     def takeAction(self, state, playerid):
         ''' (Predict/ Policy) Select Action under state'''
-        print("Test State : ", self.__turn_observation_to_state(state, playerid))
+        print("debug >>>")
+        for p in state.player_states:
+            print(p)
+        print(state.community_state)
+        print(state.community_card)
+        print(playerid)
+        print("<<<  ")
+        # print("Test State : ", self.__turn_observation_to_state(state, playerid))
         if state.community_state.to_call > 0:
             if random.random() > 0.7 :
                 return ACTION(action_table.FOLD, 0)

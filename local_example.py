@@ -11,6 +11,8 @@ def lets_play(env, n_seats, model_list):
         if env.episode_end:
             break
 
+
+
         while not cycle_terminal:
             # play safe actions, check when no one else has raised, call when raised.
             # print(">>> Debug Information ")
@@ -31,6 +33,11 @@ def lets_play(env, n_seats, model_list):
             env.render(mode="human")
         # print("final state")
         # print(cur_state)
+
+        # total_stack = sum([p.stack for p in env._seats])
+        # if total_stack != 10000:
+        #     return
+
     print("Episode End!!!")
 
 env = gym.make('TexasHoldem-v2') # holdem.TexasHoldemEnv(2)

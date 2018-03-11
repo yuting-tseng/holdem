@@ -85,14 +85,14 @@ agent會接到一個由 namedtuple所包成的 state, 包含下列三個項目
         + `hand`, (list(2)), 長度為 2的<IN TREYS FORMAT> 必須使用 TREYS提供的 API解讀
 
 1. community_state: 這裡所提到的 id = seat number
-    + button, (number), the id of bigblind 莊家位置 (順序: 莊家> 小盲 > 大盲)
-    + smallblind, (number), the current small blind amount 小盲注籌碼數
-    + bigblind, (number), the current big blind amount  大盲注籌碼數
-    + totalpot, (number), the current total amount in the community pot 所有人下注的總籌碼數
-    + lastraise, (number), the last posted raise amount 最後一個人 raise的籌碼數
-    + call_price, (number), 此 round要 call的絕對籌碼數
-    + to_call, (number), 此 round要 call的相對籌碼數 (絕對籌碼數 - 此 round已出籌碼數)
-    + current_player, (id), the id of current player 目前決策的玩家 id
+    + `button`, (number), the id of bigblind 莊家位置 (順序: 莊家> 小盲 > 大盲)
+    + `smallblind`, (number), the current small blind amount 小盲注籌碼數
+    + `bigblind`, (number), the current big blind amount  大盲注籌碼數
+    + `totalpot`, (number), the current total amount in the community pot 所有人下注的總籌碼數
+    + `lastraise`, (number), the last posted raise amount 最後一個 raise的人 增加的籌碼數
+    + `call_price`, (number), 此 round要 call的絕對籌碼數
+    + `to_call`, (number), 此 round要 call的相對籌碼數 (絕對籌碼數 - 此 round已出籌碼數)
+    + `current_player`, (id), the id of current player 目前決策的玩家 id
 
 :warning: 
 

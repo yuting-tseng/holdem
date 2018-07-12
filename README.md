@@ -36,21 +36,18 @@
 ## 安裝方法
 ```sh
 # better run under virtualenv
-$ git clone https://github.com/chuchuhao/holdem.git
+$ git clone https://github.com/yuting-tseng/holdem.git
 $ cd holdem
 $ virtualenv --no-site-packages --python /usr/bin/python3 .venv
 $ source .venv/bin/activate
-$ pip install -r requirements.txt
-$ pip install gym
-$ pip install websocket-client
-$ pip install git+https://github.com/chuchuhao/treys # 若非 windows環境可以直接 pip install treys
+$ sudo python -m pip install -r requirement.txt
 ```
 
 使用Jupyter notebook
 ```
 $ sudo python -m pip install jupyter
 $ sudo python -m pip install ipykernel
-$ python -m ipykernel install --user --name holdem --display-name "Python2(holdem)"
+$ python -m ipykernel install --user --name holdem-env --display-name "Py36(holdem)"
 ```
 Kernel 位置放置在`/Users/{username}/Library/Jupyter/kernels/`
 ## 使用方法

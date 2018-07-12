@@ -1,3 +1,5 @@
 gym
 git+https://github.com/chuchuhao/treys
 websocket-client
+tensorflow==1.9.0
+Keras==2.2.0

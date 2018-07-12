@@ -5,3 +5,5 @@
 /examples
 __pycache__
 *.DS_Store
+reference/
+.venv/

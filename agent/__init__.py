@@ -5,3 +5,4 @@ from .allfoldAgent import allFoldModel
 from .allcallAgent import allCallModel
 from .allinAgent import allinModel
 from .allraiseAgent import allRaiseModel
+from .montecarlo_agent import MontecarloModel

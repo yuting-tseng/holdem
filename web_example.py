@@ -2,7 +2,7 @@ import holdem
 import agent
 
 #SERVER_URI = "ws://poker-training.vtr.trendnet.org:3001/" # beta
-SERVER_URI = "ws://http://poker-dev.wrs.club:3001/" # training
+SERVER_URI = "ws://poker-dev.wrs.club:3001/" # training
 
 # name="Enter Your Name Here"
 name="Beth"

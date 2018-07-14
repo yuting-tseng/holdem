@@ -12,30 +12,30 @@ class Action():
         self.state = state
 
     def Fold(self):
-        print('FOLD')
+        #print('FOLD')
         if self.state.community_state.to_call == 0:
             return ACTION(action_table.CHECK, 0)
         else:
             return ACTION(action_table.FOLD, 0)
     
     def AllIn(self, playerid):
-        print("All in")
+        #print("All in")
         return ACTION(action_table.RAISE, self.state.player_states[playerid].stack) # all in
     
     def Call(self): 
-        print("Call")
+        #print("Call")
         if self.state.community_state.to_call == 0:
             return ACTION(action_table.CHECK, 0)
         else:
             return ACTION(action_table.CALL, self.state.community_state.to_call)
     
     def Raise(self, raise_upper, min_raise, raise_amount):
-        print("Raise")
+        #print("Raise")
         if min([raise_upper, min_raise, raise_amount]) == raise_upper: # fold
-            print("Raise amount too high")
+            #print("Raise amount too high")
             return self.Fold()
         if min_raise > raise_amount: # call
-            print("minimum raise more than amount to be raised")
+            #print("minimum raise more than amount to be raised")
             return self.Call()
         else:
             return ACTION(action_table.RAISE, raise_amount)
@@ -80,7 +80,7 @@ class MontecarloModel():
 
     def takeAction(self, state, playerid):
         win_rate =self.get_win_prob(state, playerid)
-        print("win Rate: ", win_rate)
+        #print("win Rate: ", win_rate)
         #return ACTION(action_table.RAISE, 50) # all in
         #print "win Rate:{}".format(win_rate)
         action = Action(state)

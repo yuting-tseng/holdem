@@ -121,7 +121,7 @@ def lets_play():
         print("Episode End!!!")
 
 
-for i in range(10000):
+for i in range(1000):
     print(i, " plays")
     try:
         lets_play()

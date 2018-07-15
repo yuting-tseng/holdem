@@ -78,15 +78,14 @@ def lets_play():
             actions = holdem.model_list_action(state, n_seats=env.n_seats, model_list=model_list)
             next_state, rewards, done, _ = env.step(actions)
             action = actions[playerid][0]
-            reward = rewards[playerid] - stack
-            stack = rewards[playerid]
+            reward = 0
             if state.community_state.current_player == playerid:
                 agent.remember(state, action, reward, next_state, done, playerid)
-                print('actions: ', action)
+#                 print('actions: ', action)
                 agent.onlineTrainModel()
-                #env.render(mode='human')
+                env.render(mode='human')
             state = next_state
-            #print("memory len: ", len(agent.memory))
+#             print("memory len: ", len(agent.memory))
 
     #         print('table card: ', state.community_card)
 
@@ -95,6 +94,10 @@ def lets_play():
             if done:
                 # print the score and break out of the loop
                 print("episode: {}/{}, score: {}".format(e, episodes, reward))
+                reward = rewards[playerid] - stack
+                stack = rewards[playerid]
+                agent.memory.pop()
+                agent.remember(state, action, reward, next_state, done, playerid)
 
             # print("reward(t+1)")
             # print(rews)

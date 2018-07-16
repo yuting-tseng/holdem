@@ -7,3 +7,4 @@ from .allinAgent import allinModel
 from .allraiseAgent import allRaiseModel
 from .montecarlo_agent import MontecarloModel
 from .DQNagent import dqnModel
+from .CCAgent import RuleBasedModel as CCModel

@@ -47,7 +47,12 @@ def getTotalCards():
     for f in Totalflower:
         for n in TotalNum:
             TotalCards.append(n+f)
-    return TotalCards
+    res = dict()
+    for i, c in enumerate(TotalCards):
+        res[i] = c
+
+    CardID = {v: k for k, v in res.items()}
+    return res, CardID
     
 class MontecarloModel():
     def __init__(self):
@@ -55,7 +60,7 @@ class MontecarloModel():
         self.reload_left = 2
         self.model = {"seed":831}
         self.simulation_number = 100
-        self.TotalCards = getTotalCards()
+        self.TotalCards, self.CardIDmapping = getTotalCards()
 
     def batchTrainModel(self):
         return
@@ -69,32 +74,12 @@ class MontecarloModel():
     def loadModel(self, path):
         return
 
-    def _pick_unused_card(self,card_num, used_card):
-        used = [Card.int_to_str(card) for card in used_card]
-        unused = [card_id for card_id in self.TotalCards if card_id not in used]
-        choiced = random.sample(unused, card_num)
-        return [Card.new(card_id) for card_id in choiced]
-
-
-    def _get_win_prob(self,state, playerid):
-        """Calculate the win probability from your board cards and hand cards by using simple Monte Carlo method.
-        """
-        def get_card_class(card_int_list):
-            res = [Card.new(Card.int_to_str(c)) for c in card_int_list if c != -1]
-            return res
-        
-        def win_prob(board, hand):
-            evaluator = Evaluator()
-            percentage = 1.0 - evaluator.get_five_card_rank_percentage(evaluator.evaluate(board, hand))
-            return percentage
-
-        hand_cards = get_card_class(state.player_states[playerid].hand)
-        board_cards = get_card_class(state.community_card)
-        if len(board_cards) < 3:
-            percentage = 0.6 #! calculate percentage
-        else:
-            percentage = win_prob(board_cards, hand_cards)
-        return percentage 
+    def _pick_unused_card(self, used_card):
+        used = [self.CardIDmapping[Card.int_to_str(card)] for card in used_card]
+        unused = [card_id for card_id in self.TotalCards.keys() if card_id not in used]
+        return [Card.new(self.TotalCards[card_id]) for card_id in unused]
+        #choiced = random.sample(unused, card_num)
+        #return [Card.new(self.TotalCards[card_id]) for card_id in choiced]
 
     def get_win_prob(self, state, playerid):
         """Calculate the win probability from your board cards and hand cards by using simple Monte Carlo method.
@@ -115,13 +100,22 @@ class MontecarloModel():
 
         win = 0
         round = 0
+
+        board_cards_to_draw = 5 - len(board_cards)  # 2
+        rest_cards = self._pick_unused_card(board_cards + hand_cards)
+
+        #choiced = random.sample(unused, card_num)
         
         for i in range(self.simulation_number):
 
-            board_cards_to_draw = 5 - len(board_cards)  # 2
-            board_sample = board_cards + self._pick_unused_card(board_cards_to_draw, board_cards + hand_cards)
+            #unused_cards = self._pick_unused_card((num_players - 1) * 2 + board_cards_to_draw, board_cards + hand_cards)
+            #board_sample = unused_cards[len(unused_cards)-board_cards_to_draw:]
+            #`unused_cards = unused_cards[:len(unused_cards)-board_cards_to_draw]
 
-            unused_cards = self._pick_unused_card((num_players - 1) * 2, hand_cards + board_sample)
+            unused_cards = random.sample(rest_cards, (num_players - 1) * 2 + board_cards_to_draw)
+            board_sample = unused_cards[len(unused_cards)-board_cards_to_draw:]
+            unused_cards = unused_cards[:len(unused_cards)-board_cards_to_draw]
+
             opponents_hole = [unused_cards[2 * i:2 * i + 2] for i in range(num_players - 1)]
             #hand_sample = self._pick_unused_card(2, board_sample + hand_cards)
 

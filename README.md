@@ -41,6 +41,7 @@ $ cd holdem
 $ virtualenv --no-site-packages --python /usr/bin/python3 .venv
 $ source .venv/bin/activate
 $ sudo python -m pip install -r requirement.txt
+$ python -m pip install git+https://github.com/chuchuhao/treys
 ```
 
 使用Jupyter notebook

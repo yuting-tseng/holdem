@@ -97,7 +97,6 @@ class dqnModel():
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
 
-
         # self.update_target_model()
     
     def get_ModelPath(self):
@@ -206,7 +205,6 @@ class dqnModel():
         to_call = observation.community_state.to_call
         return card_hot + [total_pot, my_stack, to_call]
 
-
     def __turn_card_to_one_hot_returnIndx(self, card, card_hot):
         if card == -1:
             return card_hot
@@ -269,18 +267,26 @@ class dqnModel():
         action = Action(state)
         min_raise = max(state.community_state.lastraise * 2, state.community_state.bigblind) 
         raise_upper = state.player_states[playerid].stack / 4
+
+        stack = state.player_states[playerid].stack
+        if stack > 4000:
+            stack = stack % 3000 
         
 
         react = self.act(state, playerid)
         if react == 0:
             return action.Fold()
-        elif react == 1:
+        elif react == 1 and state.community_state.to_call < int(stack / 15):
             return action.Call()
-        elif react == 2:
-            raise_amount = state.community_state.to_call + int(state.player_states[playerid].stack / 5)
+        elif react == 2 and state.community_state.to_call < int(stack / 10):
+            raise_amount = state.community_state.to_call + int(stack / 15)
             return action.Raise(raise_upper, min_raise, raise_amount)
-        else:
-            return action.AllIn(playerid)
+        elif react == 3 and state.community_state.to_call < int(stack / 5):
+            #return action.AllIn(playerid)
+            raise_amount = state.community_state.to_call + int(stack / 5)
+            return action.Raise(raise_upper, min_raise, raise_amount)
+        else: 
+            return action.Fold()
         
 
     def getReload(self, state):

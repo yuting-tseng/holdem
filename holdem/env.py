@@ -245,6 +245,26 @@ class TexasHoldemEnv(Env, utils.EzPickle):
             self._resolve_round(players)
         return self._get_current_step_returns(terminal)
 
+    def list_win_prob(self, model_list):
+        state = self._get_current_state()
+
+        class OpponentInfo():
+            def __init__(my):
+                my.total_pot = self._totalpot
+                my.pid = self._last_player.player_id
+                my.action = self._last_actions[my.pid][0]
+                my.WinRate = model_list[my.pid].win_rate
+                my.Betting = self._seats[my.pid].betting
+                my.Stack = self._seats[my.pid].stack + my.Betting
+                my.table_card_num = len([c for c in state.community_card if c > 0])
+
+            def __str__(my):
+                return "{}, {}, {}, {}, {}, {}".format(my.WinRate, my.action, my.Betting, my.Stack, my.total_pot, my.table_card_num)
+
+        return OpponentInfo()
+
+
+
     def render(self, mode='machine', close=False):
         print('Cycle {}, total pot: {} >>>'.format(self._cycle, self._totalpot))
         if self._last_actions is not None:
@@ -475,7 +495,8 @@ class TexasHoldemEnv(Env, utils.EzPickle):
                 int(player.isallin),
                 int(player.lastsidepot),
                 0,
-                self._pad(player.hand, 2, -1)
+                self._pad(player.hand, 2, -1),
+                player.last_action
             )
             player_states.append(player_features)
 

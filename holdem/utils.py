@@ -22,7 +22,7 @@
 from treys import Card
 from collections import namedtuple
 
-PLAYER_STATE = namedtuple('player_state', ['emptyplayer', 'seat', 'stack', 'playing_hand', 'handrank', 'playedthisround', 'betting', 'isallin', 'lastsidepot', 'reloadCount', 'hand'])
+PLAYER_STATE = namedtuple('player_state', ['emptyplayer', 'seat', 'stack', 'playing_hand', 'handrank', 'playedthisround', 'betting', 'isallin', 'lastsidepot', 'reloadCount', 'hand', 'last_action'])
 '''
 emptyplayer, (boolean), True seat is empty, False is not
 seat, (number or string), when play inside gym, this is a seat id, when connect to TM server, this would be player's name

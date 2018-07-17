@@ -8,4 +8,4 @@ __pycache__
 reference/
 .venv/
 .ipynb_checkpoints/
-Model/
+data/

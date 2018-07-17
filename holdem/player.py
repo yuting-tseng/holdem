@@ -56,6 +56,7 @@ class Player(object):
         self.sitting_out = True
         self._roundRaiseLimit = roundRaiseLimit
         self._roundRaiseCount = 0
+        self.last_action = None
 
     def get_name(self):
         return self.playername
@@ -89,7 +90,7 @@ class Player(object):
         self.stack += ammount
 
     def player_state(self):
-        return (self.get_seat(), self.stack, self.playing_hand, self.betting, self.player_id)
+        return (self.get_seat(), self.stack, self.playing_hand, self.betting, self.player_id, self.last_action)
 
     def reset_stack(self):
         self.stack = self._init_stack
@@ -108,6 +109,8 @@ class Player(object):
         [action_idx, raise_amount] = action
         raise_amount = int(raise_amount)
         action_idx = int(action_idx)
+        action_list = ['check', 'call', 'raise', 'fold']
+        self.last_action = action_list[action_idx]
 
         if tocall == 0:
             assert action_idx in [Player.CHECK, Player.RAISE]

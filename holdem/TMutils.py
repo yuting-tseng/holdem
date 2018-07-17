@@ -98,7 +98,8 @@ class ClientPlayer():
                 int(player.isallin),
                 int(player.lastsidepot),
                 int(player.reloadCount),
-                self._pad(player.hand, 2, -1)
+                self._pad(player.hand, 2, -1),
+                player.last_action
             )
             player_states.append(player_features)
 
@@ -433,6 +434,7 @@ class ClientPlayer():
             player_info = self._player_dict[actioned_id]
             player_info.playedthisround = True
             player_info.stack = data["action"]["chips"]
+            player_info.last_action = data["action"]["action"]
 
             # do some action
             self._last_action = data["action"]["action"]

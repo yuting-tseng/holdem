@@ -2,16 +2,20 @@ from collections import namedtuple
 from enum import Enum
 from holdem import PLAYER_STATE, COMMUNITY_STATE, STATE, ACTION, action_table, card_to_normal_str
 import random
-
-from treys import Evaluator
+import os
+import json
 import numpy as np
+
+from treys import Evaluator, Card
+#from treys import Card
+#from evaluator import Evaluator
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import Adam, RMSprop
 from keras import backend as K
 from keras.losses import binary_crossentropy
 from collections import deque
-import os
+from keras.callbacks import History 
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -38,6 +42,27 @@ CHAR_NUM_TO_INT = {
         'K': 12,
         'A': 0,
 }
+
+class dqnAction():
+    FOLD = 0
+    CALL = 1
+    RAISE = 2
+    ALLIN = 3
+
+
+def getTotalCards():
+    TotalNum = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K']
+    Totalflower = ['s', 'h', 'c', 'd']
+    TotalCards = list()
+    for f in Totalflower:
+        for n in TotalNum:
+            TotalCards.append(n+f)
+    res = dict()
+    for i, c in enumerate(TotalCards):
+        res[i] = c
+
+    CardID = {v: k for k, v in res.items()}
+    return res, CardID
 
 class Action():
     def __init__(self, state):
@@ -80,7 +105,7 @@ class dqnModel():
         self.model = {"seed":831}
 
         # total 367 states
-        self._state = [0] * 52 * 2 + [0] * 52 * 5 + [0] *3 # { my 2 card (one hot), community 5 card (one hot), total_pot, my_stack, to_call) ]
+        self._state = [0] * 52 * 2 + [0] * 52 * 5 + [0] *4 # { my 2 card (one hot), community 5 card (one hot), total_pot, my_stack, to_call, win_prob) ]
         # add new initial
         self.action_size = 4
         self.learning_rate = 0.001
@@ -88,7 +113,7 @@ class dqnModel():
         self.target_model = self._build_model()
         self.ModelDir = 'Model/'
         self.ModelName = 'DQNmodel.h5'
-
+        self.loadModel()
         
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
@@ -96,6 +121,15 @@ class dqnModel():
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
+
+        # monte carlo method
+        self.simulation_number = 5000
+        self.TotalCards, self.CardIDmapping = getTotalCards()
+
+        # state
+        self.last_state = None
+        self.last_action = None
+        self.stack_init = 0
 
         # self.update_target_model()
     
@@ -108,7 +142,8 @@ class dqnModel():
     def _huber_loss(self, target, prediction):
         # sqrt(1+error^2)-1
         error = prediction - target
-        return K.mean(K.sqrt(1+K.square(error))-1, axis=-1)
+        loss =  K.mean(K.sqrt(1+K.square(error))-1, axis=-1)
+        return loss
     
     def remember(self, state, action, reward, next_state, done, playerid):
         state = self.__turn_observation_to_state(state, playerid)
@@ -116,7 +151,8 @@ class dqnModel():
         
         state = np.array(state).reshape(1,len(self._state))
         next_state = np.array(next_state).reshape(1,len(self._state))
-        self.memory.append((state, action, reward, next_state, done))
+        #self.memory.append((state, action, reward, next_state, done))
+        self.memory.append((action, reward, state, next_state, done))
         
     def act(self, state, playerid):
         state = self.__turn_observation_to_state(state, playerid)
@@ -128,10 +164,9 @@ class dqnModel():
     
     def _replay(self, batch_size):
         minibatch = random.sample(self.memory, batch_size)
-        for state, action, reward, next_state, done in minibatch:
+        for state, action, reward, next_state in minibatch:
             target = reward
-            if not done:
-                target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
+            target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
             target_f = self.model.predict(state)
             target_f[0][action] = target
             self.model.fit(state, target_f, epochs=1, verbose=0)
@@ -177,12 +212,95 @@ class dqnModel():
         card_hot[card_idx] = 1
         return card_hot
 
+    def _pick_unused_card(self, used_card):
+        unused = self.TotalCards.keys() - set(used_card)
+        return [Card.new(self.TotalCards[card_id]) for card_id in unused]
+
+    def get_win_prob(self, state, playerid):
+        """Calculate the win probability from your board cards and hand cards by using simple Monte Carlo method.
+        """
+        evaluator = Evaluator()
+
+        def get_card_class(card_int_list):
+            res = [Card.new(Card.int_to_str(c)) for c in card_int_list if c != -1]
+            return res
+
+        def WinProbability(hand, board):
+            rank = evaluator.evaluate(board, hand)
+            percentage = 1.0 - evaluator.get_five_card_rank_percentage(rank)
+            return percentage
+
+        hand_cards = get_card_class(state.player_states[playerid].hand)
+        board_cards = get_card_class(state.community_card)
+        if any([True for h in hand_cards if h in board_cards]):
+            Card.print_pretty_cards(hand_cards)
+            Card.print_pretty_cards(board_cards)
+        num_players = len([ p for p in state.player_states if not p.emptyplayer])
+
+        win = 0
+        round = 0
+
+        board_cards_to_draw = 5 - len(board_cards)  # 2
+        rest_cards = self._pick_unused_card(board_cards + hand_cards)
+        #print("rest cards")
+        #Card.print_pretty_cards(rest_cards)
+        
+        #choiced = random.sample(unused, card_num)
+        
+        for i in range(self.simulation_number):
+
+            unused_cards = random.sample(rest_cards, (num_players - 1) * 2 + board_cards_to_draw)
+            board_sample = unused_cards[len(unused_cards)-board_cards_to_draw:]
+            unused_cards = unused_cards[:len(unused_cards)-board_cards_to_draw]
+
+            opponents_hole = [unused_cards[2 * i:2 * i + 2] for i in range(num_players - 1)]
+
+            try:
+                opponents_score = [WinProbability(hole, board_sample) for hole in opponents_hole]
+                my_rank = WinProbability(hand_cards, board_sample)
+                if my_rank >= max(opponents_score):
+                    win += 1
+                round+=1
+            except Exception as inst:# Exception, e:
+                #print e.message
+                continue
+        print("Win:{}".format(win))
+        print('round:{}'.format(round))
+        if round == 0: 
+            if len(board_cards) > 1:
+                return WinProbability(board_cards, hand_cards)
+            else: 
+                return 0.6
+        win_prob = win / float(round)
+        return win_prob
+
+    def eval_card_rank(self, state, playerid):
+        evaluator = Evaluator()
+        
+        def get_card_class(card_int_list):
+            res = [Card.new(Card.int_to_str(c)) for c in card_int_list if c != -1]
+            return res
+
+        hand_cards = get_card_class(state.player_states[playerid].hand)
+        board_cards = get_card_class(state.community_card)
+        #Card.print_pretty_cards(board_cards + hand_cards)
+        rank = evaluator.evaluate(hand_cards, board_cards)
+        opercentage = 1.0 - evaluator.get_five_card_rank_percentage(rank)
+        #rank_class = evaluator.get_rank_class(rank)
+        #class_string = evaluator.class_to_string(rank_class)
+        #percentage = 1.0 - evaluator.get_five_card_rank_percentage(rank)  # higher better here
+        return rank, percentage
+        #return percentage
+
     def __turn_observation_to_state(self, observation, playerid):
         my_card = observation.player_states[playerid].hand
         community_card = observation.community_card
         my_stack = observation.player_states[playerid].stack
         total_pot = observation.community_state.totalpot
         to_call = observation.community_state.to_call
+        #rank, win_rate = self.eval_card_rank(observation, playerid)
+        #rank = self.eval_card_rank(observation, playerid)
+        win_rate = self.get_win_prob(observation, playerid)
         return self.__turn_card_to_one_hot(my_card[0]) + \
                self.__turn_card_to_one_hot(my_card[1])+ \
                self.__turn_card_to_one_hot(community_card[0])+ \
@@ -190,7 +308,7 @@ class dqnModel():
                self.__turn_card_to_one_hot(community_card[2])+ \
                self.__turn_card_to_one_hot(community_card[3])+ \
                self.__turn_card_to_one_hot(community_card[4])+ \
-               [total_pot, my_stack, to_call]
+               [total_pot, my_stack, to_call, win_rate]
 
     def __turn_observation_to_stateJust52(self, observation, playerid):
         card_hot = [0]*52
@@ -219,7 +337,8 @@ class dqnModel():
 
     def batchTrainModel(self, batch_size):
         minibatch = random.sample(self.memory, batch_size)
-        for state, action, reward, next_state, done in minibatch:
+        #for state, action, reward, next_state in minibatch:
+        for action, reward, state, next_state in minibatch:
             target = reward
             if not done:
                 target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
@@ -230,18 +349,30 @@ class dqnModel():
             self.epsilon *= self.epsilon_decay
 
     def onlineTrainModel(self):
-        state, action, reward, next_state, done = self.memory[-1]
+        history = History()
+        #state, action, reward, next_state, done = self.memory[-1]
+        action, reward, state, next_state, done = self.memory[-1]
         target = reward
         if not done:
             target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
         target_f = self.model.predict(state)
         target_f[0][action] = target
-        self.model.fit(state, target_f, epochs=1, verbose=0)
+        self.model.fit(state, target_f, epochs=1, verbose=0, callbacks=[history])
+        print(history.history)
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
-        if len(self.memory) % 20 == 0:
+        if len(self.memory) % 1 == 0:
             self.saveModel()
-        
+            self.saveMemory()
+
+    def saveMemory(self, memoryfile='Model/DQN_memory.txt'):
+        with open(memoryfile, 'a') as the_file:
+            for line in self.memory:
+                elem = list(line)
+                #elem[0] = elem[0].tolist()
+                elem[2] = elem[2].tolist()
+                elem[3] = elem[3].tolist()
+                the_file.write(json.dumps(elem) + '\n')
 
     def saveModel(self):
         self.model.save_weights(self.get_ModelPath())
@@ -249,6 +380,18 @@ class dqnModel():
     def loadModel(self):
         if os.path.isfile(self.get_ModelPath()):
             self.model.load_weights(self.get_ModelPath())
+            self.target_model.load_weights(self.get_ModelPath())
+
+    def RoundEndAction(self, state, playerid): 
+        action = Action(state)
+        
+        reward = state.player_states[playerid].stack - self.stack_init
+        self.remember(self.last_state, self.last_action, reward, state, 1, playerid)
+        self.onlineTrainModel()
+
+        self.last_state = None
+        self.last_action = None
+        return None
 
     def takeAction(self, state, playerid):
         ''' (Predict/ Policy) Select Action under state'''
@@ -261,33 +404,63 @@ class dqnModel():
         # input("pause")
         
         # input node: 367 (52*2 + 52*5 + 3)
-        _stateCards = self.__turn_observation_to_state(state, playerid)
+        # _stateCards = self.__turn_observation_to_state(state, playerid)
 #         print("Test State => ", self.__turn_observation_to_state(state, playerid))
-        
+
         action = Action(state)
+
+        print('last state none :', self.last_state == None)
+        if self.last_state == None:
+            win_rate = self.get_win_prob(state, playerid)
+            call_upper = win_rate * state.player_states[playerid].stack * 0.3
+            self.last_state = state
+            self.stack_init = state.player_states[playerid].stack + state.player_states[playerid].betting
+            if call_upper > state.community_state.to_call:
+                self.last_action = dqnAction.CALL
+                return action.Call()
+            else:
+                self.last_action = dqnAction.FOLD
+                return action.Fold()
+
+        self.remember(self.last_state, self.last_action, 0, state, 0, playerid)
+        self.onlineTrainModel()
+        #print("last memory: ", self.memory[-1])
+
+        self.last_state = state
+        
         min_raise = max(state.community_state.lastraise * 2, state.community_state.bigblind) 
         raise_upper = state.player_states[playerid].stack / 4
 
         stack = state.player_states[playerid].stack
-        if stack > 4000:
-            stack = stack % 3000 
-        
+        #if stack > 5000:
+        #    stack = stack % 3000 
 
         react = self.act(state, playerid)
-        if react == 0:
+        self.last_action = react
+        print('DQN action: ', react)
+        if react == dqnAction.FOLD:
             return action.Fold()
-        elif react == 1 and state.community_state.to_call < int(stack / 15):
+        elif react == dqnAction.CALL:# and state.community_state.to_call < int(stack / 15):
             return action.Call()
-        elif react == 2 and state.community_state.to_call < int(stack / 10):
+        elif react == dqnAction.RAISE:
             raise_amount = state.community_state.to_call + int(stack / 15)
             return action.Raise(raise_upper, min_raise, raise_amount)
-        elif react == 3 and state.community_state.to_call < int(stack / 5):
-            #return action.AllIn(playerid)
+            #if state.community_state.to_call < int(stack / 10):
+            #    raise_amount = state.community_state.to_call + int(stack / 15)
+            #    return action.Raise(raise_upper, min_raise, raise_amount)
+            #else:
+            #    return action.Call()
+        elif react == dqnAction.ALLIN:
             raise_amount = state.community_state.to_call + int(stack / 5)
             return action.Raise(raise_upper, min_raise, raise_amount)
+            #if state.community_state.to_call < int(stack / 5):
+            #    #return action.AllIn(playerid)
+            #    raise_amount = state.community_state.to_call + int(stack / 5)
+            #    return action.Raise(raise_upper, min_raise, raise_amount)
+            #else:
+            #    return action.Call()
         else: 
-            return action.Fold()
-        
+            raise ValueError('react not found')
 
     def getReload(self, state):
         '''return `True` if reload is needed under state, otherwise `False`'''

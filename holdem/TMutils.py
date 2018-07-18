@@ -495,6 +495,16 @@ class ClientPlayer():
             return False # not interesting
 
         elif msg == "__round_end":
+
+            # round end action by model
+            my_seat = self.__getPlayerSeatByName(self._name)
+            model_action = self._model.RoundEndAction(self.get_current_state(), my_seat)
+            #try:
+            #    my_seat = self.__getPlayerSeatByName(self._name)
+            #    model_action = self._model.RoundEndAction(self.get_current_state(), my_seat)
+            #except:
+            #    pass
+
             # no reply
             if self._debug:
                 print("[DEBUG] {}".format(data))

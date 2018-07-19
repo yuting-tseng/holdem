@@ -106,7 +106,7 @@ class dqnModel():
 
         # total 367 states
         #self._state = [0] * 52 * 2 + [0] * 52 * 5 + [0] *4 # { my 2 card (one hot), community 5 card (one hot), total_pot, my_stack, to_call, win_prob) ]
-        self._state = [0] * 52 * 2 + [0] * 52 * 5 + [0] * 9 + [0] *4 # { my 2 card (one hot), community 5 card (one hot), opponent's action(10 opponents), total_pot, my_stack, to_call, win_prob) ]
+        self._state = [0] * 52 * 2 + [0] * 52 * 5 + [0] * 9 + [0] * 5 # { my 2 card (one hot), community 5 card (one hot), opponent's action(10 opponents), total_pot, my_stack, to_call, my_betting, win_prob) ]
         # add new initial
         self.action_size = 4
         self.learning_rate = 0.001
@@ -120,12 +120,12 @@ class dqnModel():
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
         self.epsilon = 1.0  # exploration rate
-        self.epsilon_min = 0.1#0.01
+        self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
 
         # monte carlo method
-        self.simulation_number = 5000
+        self.simulation_number = 1000
         self.TotalCards, self.CardIDmapping = getTotalCards()
 
         # state
@@ -319,6 +319,7 @@ class dqnModel():
         my_card = observation.player_states[playerid].hand
         community_card = observation.community_card
         my_stack = observation.player_states[playerid].stack
+        my_betting = observation.player_states[playerid].betting
         total_pot = observation.community_state.totalpot
         to_call = observation.community_state.to_call
         #rank, win_rate = self.eval_card_rank(observation, playerid)
@@ -333,7 +334,7 @@ class dqnModel():
                self.__turn_card_to_one_hot(community_card[3])+ \
                self.__turn_card_to_one_hot(community_card[4])+ \
                opponent_action+ \
-               [total_pot, my_stack, to_call, win_rate]
+               [total_pot, my_stack, to_call, my_betting, win_rate]
 
     def __turn_observation_to_stateJust52(self, observation, playerid):
         card_hot = [0]*52
@@ -386,9 +387,9 @@ class dqnModel():
         print(history.history)
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
-        if len(self.memory) % 1 == 0:
+        #if len(self.memory) % 20 == 0:
             self.saveModel()
-            self.saveMemory()
+        #    self.saveMemory()
 
     def saveMemory(self):
         memoryfile=self.MemoryPath
@@ -440,15 +441,15 @@ class dqnModel():
 
         reward = state.player_states[playerid].stack - self.stack_init
         if min(final_ranking) == final_ranking[playerid] and reward < 0: # if player could win but not win 
-            reward  = -1.0 * state.community_state.totalpot
+            reward = -1.0 * state.community_state.totalpot
         return reward
 
     def RoundEndAction(self, state, playerid): 
-
         reward = self.getReward(state, playerid)
         done = 1
         self.remember(self.last_state, self.last_action, reward, state, done, playerid)
         self.onlineTrainModel()
+        #self.saveModel()
 
         self.last_state = None
         self.last_action = None

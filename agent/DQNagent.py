@@ -99,13 +99,14 @@ class Action():
 
 class dqnModel():
     # https://keon.io/deep-q-learning/
-    def __init__(self):
+    def __init__(self, memory_path='DQN_memory.txt'):
         self._nothing = "test"
         self.reload_left = 2
         self.model = {"seed":831}
 
         # total 367 states
-        self._state = [0] * 52 * 2 + [0] * 52 * 5 + [0] *4 # { my 2 card (one hot), community 5 card (one hot), total_pot, my_stack, to_call, win_prob) ]
+        #self._state = [0] * 52 * 2 + [0] * 52 * 5 + [0] *4 # { my 2 card (one hot), community 5 card (one hot), total_pot, my_stack, to_call, win_prob) ]
+        self._state = [0] * 52 * 2 + [0] * 52 * 5 + [0] * 9 + [0] *4 # { my 2 card (one hot), community 5 card (one hot), opponent's action(10 opponents), total_pot, my_stack, to_call, win_prob) ]
         # add new initial
         self.action_size = 4
         self.learning_rate = 0.001
@@ -114,11 +115,12 @@ class dqnModel():
         self.ModelDir = 'Model/'
         self.ModelName = 'DQNmodel.h5'
         self.loadModel()
+        self.MemoryPath = self.ModelDir + memory_path
         
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
         self.epsilon = 1.0  # exploration rate
-        self.epsilon_min = 0.01
+        self.epsilon_min = 0.1#0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
 
@@ -160,6 +162,7 @@ class dqnModel():
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
         act_values = self.model.predict(state)
+        print("DQN action: ", act_values)
         return np.argmax(act_values[0])  # returns action
     
     def _replay(self, batch_size):
@@ -292,6 +295,26 @@ class dqnModel():
         return rank, percentage
         #return percentage
 
+    def get_opponent_action(self, state, playerid):
+        actions = list()
+        for p in state.player_states:
+            if p.seat == playerid:
+                continue
+            if p.last_action == 'call':
+                actions.append(dqnAction.CALL)
+            elif p.last_action == 'check':
+                actions.append(dqnAction.CALL)
+            elif p.last_action == 'raise':
+                if p.betting / p.stack > 0.5:
+                    actions.append(dqnAction.ALLIN)
+                else:
+                    actions.append(dqnAction.RAISE)
+            elif p.last_action == 'fold':
+                actions.append(dqnAction.FOLD)
+            else:
+                actions.append(4)
+        return actions
+
     def __turn_observation_to_state(self, observation, playerid):
         my_card = observation.player_states[playerid].hand
         community_card = observation.community_card
@@ -301,6 +324,7 @@ class dqnModel():
         #rank, win_rate = self.eval_card_rank(observation, playerid)
         #rank = self.eval_card_rank(observation, playerid)
         win_rate = self.get_win_prob(observation, playerid)
+        opponent_action = self.get_opponent_action(observation, playerid)
         return self.__turn_card_to_one_hot(my_card[0]) + \
                self.__turn_card_to_one_hot(my_card[1])+ \
                self.__turn_card_to_one_hot(community_card[0])+ \
@@ -308,6 +332,7 @@ class dqnModel():
                self.__turn_card_to_one_hot(community_card[2])+ \
                self.__turn_card_to_one_hot(community_card[3])+ \
                self.__turn_card_to_one_hot(community_card[4])+ \
+               opponent_action+ \
                [total_pot, my_stack, to_call, win_rate]
 
     def __turn_observation_to_stateJust52(self, observation, playerid):
@@ -365,14 +390,22 @@ class dqnModel():
             self.saveModel()
             self.saveMemory()
 
-    def saveMemory(self, memoryfile='Model/DQN_memory.txt'):
+    def saveMemory(self):
+        memoryfile=self.MemoryPath
         with open(memoryfile, 'a') as the_file:
             for line in self.memory:
                 elem = list(line)
                 #elem[0] = elem[0].tolist()
                 elem[2] = elem[2].tolist()
                 elem[3] = elem[3].tolist()
-                the_file.write(json.dumps(elem) + '\n')
+                try:
+                    the_file.write(json.dumps(elem) + '\n')
+                except:
+                    print('elem: ', elem)
+                    elem[0] = elem[0] * 1.0
+                    elem[1] = elem[1] * 1.0
+                    elem[4] = elem[4] * 1.0
+                    the_file.write(json.dumps(elem) + '\n')
 
     def saveModel(self):
         self.model.save_weights(self.get_ModelPath())
@@ -382,11 +415,39 @@ class dqnModel():
             self.model.load_weights(self.get_ModelPath())
             self.target_model.load_weights(self.get_ModelPath())
 
-    def RoundEndAction(self, state, playerid): 
+
+    def getReward(self, state, playerid):
+        def get_card_class(card_int_list):
+            res = [Card.new(Card.int_to_str(c)) for c in card_int_list if c != -1]
+            return res
+
+        def get_final_ranking():
+            evaluator = Evaluator()
+            final_ranking = list()
+
+            for p in state.player_states:
+                hand_cards = get_card_class(p.hand)
+                board_cards = get_card_class(state.community_card)
+                if not hand_cards: # player not play this round
+                    continue
+
+                rank = evaluator.evaluate(hand_cards, board_cards)
+                final_ranking.append(rank)
+            return final_ranking
+
         action = Action(state)
-        
+        final_ranking = get_final_ranking()
+
         reward = state.player_states[playerid].stack - self.stack_init
-        self.remember(self.last_state, self.last_action, reward, state, 1, playerid)
+        if min(final_ranking) == final_ranking[playerid] and reward < 0: # if player could win but not win 
+            reward  = -1.0 * state.community_state.totalpot
+        return reward
+
+    def RoundEndAction(self, state, playerid): 
+
+        reward = self.getReward(state, playerid)
+        done = 1
+        self.remember(self.last_state, self.last_action, reward, state, done, playerid)
         self.onlineTrainModel()
 
         self.last_state = None
@@ -395,18 +456,10 @@ class dqnModel():
 
     def takeAction(self, state, playerid):
         ''' (Predict/ Policy) Select Action under state'''
-        # print("state => ",state)
-        # print("playerid => ",playerid)
 
-        # input node: 55
-        #_stateCards = self.__turn_observation_to_stateJust52(state, playerid)
-        #print("Test State => ", _stateCards)
-        # input("pause")
+        # load Model parameters
+        self.loadModel()
         
-        # input node: 367 (52*2 + 52*5 + 3)
-        # _stateCards = self.__turn_observation_to_state(state, playerid)
-#         print("Test State => ", self.__turn_observation_to_state(state, playerid))
-
         action = Action(state)
 
         print('last state none :', self.last_state == None)
@@ -422,9 +475,9 @@ class dqnModel():
                 self.last_action = dqnAction.FOLD
                 return action.Fold()
 
-        self.remember(self.last_state, self.last_action, 0, state, 0, playerid)
+        reward = 0
+        self.remember(self.last_state, self.last_action, reward, state, 0, playerid)
         self.onlineTrainModel()
-        #print("last memory: ", self.memory[-1])
 
         self.last_state = state
         
@@ -443,7 +496,7 @@ class dqnModel():
         elif react == dqnAction.CALL:# and state.community_state.to_call < int(stack / 15):
             return action.Call()
         elif react == dqnAction.RAISE:
-            raise_amount = state.community_state.to_call + int(stack / 15)
+            raise_amount = state.community_state.to_call + int(stack / 25)
             return action.Raise(raise_upper, min_raise, raise_amount)
             #if state.community_state.to_call < int(stack / 10):
             #    raise_amount = state.community_state.to_call + int(stack / 15)
@@ -451,7 +504,7 @@ class dqnModel():
             #else:
             #    return action.Call()
         elif react == dqnAction.ALLIN:
-            raise_amount = state.community_state.to_call + int(stack / 5)
+            raise_amount = state.community_state.to_call + int(stack / 10)
             return action.Raise(raise_upper, min_raise, raise_amount)
             #if state.community_state.to_call < int(stack / 5):
             #    #return action.AllIn(playerid)

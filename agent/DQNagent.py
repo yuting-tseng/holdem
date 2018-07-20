@@ -308,7 +308,7 @@ class dqnModel():
             elif p.last_action == 'check':
                 actions.append(dqnAction.CALL)
             elif p.last_action == 'raise':
-                if p.betting / p.stack > 0.5:
+                if p.betting / (p.stack+0.001) > 0.5: # prevent p.stack == 0 error
                     actions.append(dqnAction.ALLIN)
                 else:
                     actions.append(dqnAction.RAISE)

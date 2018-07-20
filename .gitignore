@@ -9,3 +9,4 @@ reference/
 .venv/
 .ipynb_checkpoints/
 data/
+tmp/

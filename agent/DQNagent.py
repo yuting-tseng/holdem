@@ -125,7 +125,7 @@ class dqnModel():
         self.learning_rate = 0.001
 
         # monte carlo method
-        self.simulation_number = 1000
+        self.simulation_number = 300
         self.TotalCards, self.CardIDmapping = getTotalCards()
 
         # state
@@ -162,7 +162,7 @@ class dqnModel():
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
         act_values = self.model.predict(state)
-        print("DQN action: ", act_values)
+        #print("DQN action: ", act_values)
         return np.argmax(act_values[0])  # returns action
     
     def _replay(self, batch_size):
@@ -267,11 +267,14 @@ class dqnModel():
             except Exception as inst:# Exception, e:
                 #print e.message
                 continue
-        print("Win:{}".format(win))
-        print('round:{}'.format(round))
+        #print("Win:{}".format(win))
+        #print('round:{}'.format(round))
         if round == 0: 
             if len(board_cards) > 1:
-                return WinProbability(board_cards, hand_cards)
+                try:
+                    return WinProbability(board_cards, hand_cards)
+                except:
+                    return 0.6
             else: 
                 return 0.6
         win_prob = win / float(round)
@@ -388,13 +391,15 @@ class dqnModel():
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
         #if len(self.memory) % 20 == 0:
-            self.saveModel()
-        #    self.saveMemory()
+        self.saveModel()
+        #self.saveMemory()
 
     def saveMemory(self):
         memoryfile=self.MemoryPath
         with open(memoryfile, 'a') as the_file:
-            for line in self.memory:
+            while len(self.memory) > 0:
+            #for line in self.memory:
+                line = self.memory.popleft()
                 elem = list(line)
                 #elem[0] = elem[0].tolist()
                 elem[2] = elem[2].tolist()
@@ -402,7 +407,7 @@ class dqnModel():
                 try:
                     the_file.write(json.dumps(elem) + '\n')
                 except:
-                    print('elem: ', elem)
+                    #print('elem: ', elem)
                     elem[0] = elem[0] * 1.0
                     elem[1] = elem[1] * 1.0
                     elem[4] = elem[4] * 1.0
@@ -440,8 +445,17 @@ class dqnModel():
         final_ranking = get_final_ranking()
 
         reward = state.player_states[playerid].stack - self.stack_init
-        if min(final_ranking) == final_ranking[playerid] and reward < 0: # if player could win but not win 
+        if min(final_ranking) == final_ranking[playerid] and reward <= 0: # if player could win but not win 
             reward = -1.0 * state.community_state.totalpot
+        elif reward > 0:
+            if final_ranking[playerid] < 300:
+                reward *= 15
+            elif final_ranking[playerid] < 700:
+                reward *= 10
+            elif final_ranking[playerid] < 1500:
+                reward *= 5
+            elif final_ranking[playerid] < 3000:
+                reward *= 3
         return reward
 
     def RoundEndAction(self, state, playerid): 
@@ -449,7 +463,7 @@ class dqnModel():
         done = 1
         self.remember(self.last_state, self.last_action, reward, state, done, playerid)
         self.onlineTrainModel()
-        #self.saveModel()
+        self.saveMemory()
 
         self.last_state = None
         self.last_action = None
@@ -463,7 +477,7 @@ class dqnModel():
         
         action = Action(state)
 
-        print('last state none :', self.last_state == None)
+        #print('last state none :', self.last_state == None)
         if self.last_state == None:
             win_rate = self.get_win_prob(state, playerid)
             call_upper = win_rate * state.player_states[playerid].stack * 0.3
@@ -486,12 +500,12 @@ class dqnModel():
         raise_upper = state.player_states[playerid].stack / 4
 
         stack = state.player_states[playerid].stack
-        #if stack > 5000:
-        #    stack = stack % 3000 
+        if stack > 5000:
+            stack = stack % 3000 
 
         react = self.act(state, playerid)
         self.last_action = react
-        print('DQN action: ', react)
+        #print('DQN action: ', react)
         if react == dqnAction.FOLD:
             return action.Fold()
         elif react == dqnAction.CALL:# and state.community_state.to_call < int(stack / 15):

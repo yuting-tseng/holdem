@@ -132,7 +132,8 @@ class Player(object):
                 raise error.Error('invalid action ({}) must be raise (2), call (1), or fold (3)'.format(action_idx))
             if action_idx == Player.RAISE:
                 if raise_amount < minraise:
-                    raise error.Error('raise must be greater than minraise {} but {}'.format(minraise, raise_amount))
+                    #raise error.Error('raise must be greater than minraise {} but {}'.format(minraise, raise_amount))
+                    pass
                 if raise_amount > self.stack:
                     raise error.Error('raise must be less than maxraise {}'.format(self.stack))
                 move_tuple = ('raise', raise_amount)

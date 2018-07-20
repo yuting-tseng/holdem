@@ -183,9 +183,12 @@ class dqnModel():
     def _build_model(self):
         model = Sequential()
 
-        model.add(Dense(100, input_dim=len(self._state)))
+        model.add(Dense(1024, input_dim=len(self._state)))
 #         model.add(Dense(100, input_shape=(len(self._state),)))
-        model.add(Dense(50, input_dim=100))
+        model.add(Dense(512, input_dim=1024))
+        model.add(Dense(256, input_dim=512))
+        model.add(Dense(64, input_dim=64))
+        model.add(Dense(16, input_dim=16))
         model.add(Dense(self.action_size, input_dim=50))
 
         opt = Adam(lr=self.learning_rate)

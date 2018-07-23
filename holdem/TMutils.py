@@ -445,9 +445,11 @@ class ClientPlayer():
                 if self._debug:
                     print('[DEBUG] Player', self._current_player, data["action"]["action"], data["action"]["amount"])
             elif data["action"]["action"] == "check":
-                self._player_bet(player_info, data["action"]["amount"])
+                #self._player_bet(player_info, data["action"]["amount"])
+                self._player_bet(player_info, 0)
                 if self._debug:
-                    print('[DEBUG] Player', self._current_player, "check", data["action"]["amount"])
+                    #print('[DEBUG] Player', self._current_player, "check", data["action"]["amount"])
+                    print('[DEBUG] Player', self._current_player, "check", 0)
             elif data["action"]["action"] == "call":
                 self._tocall = data["action"]["amount"]
                 self._player_bet(player_info, self._tocall)

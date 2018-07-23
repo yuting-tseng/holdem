@@ -7,7 +7,5 @@ from .allinAgent import allinModel
 from .allraiseAgent import allRaiseModel
 from .montecarlo_agent import MontecarloModel
 from .DQNagent import dqnModel
-from .dqn_agent import dqnModel as dqnModel_v2
 from .CCAgent import RuleBasedModel as CCModel
-from .CalOpponentWinProbAgent import CalModel
-from .ChrisAgent import antiMonteModel as ChrisModel
+#from .ChrisAgent import antiMonteModel as ChrisModel

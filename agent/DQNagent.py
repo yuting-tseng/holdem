@@ -313,9 +313,9 @@ class dqnModel():
                 actions.append(dqnAction.CALL)
             elif p.last_action == 'raise':
                 if p.betting / (p.stack+0.001) > 0.5: # prevent p.stack == 0 error
-                    actions.append(dqnAction.ALLIN)
+                    actions.append(dqnAction.RAISE_MORE)
                 else:
-                    actions.append(dqnAction.RAISE)
+                    actions.append(dqnAction.RAISE_LESS)
             elif p.last_action == 'fold':
                 actions.append(dqnAction.FOLD)
             else:

@@ -46,8 +46,9 @@ CHAR_NUM_TO_INT = {
 class dqnAction():
     FOLD = 0
     CALL = 1
-    RAISE = 2
-    ALLIN = 3
+    RAISE_LESS = 2
+    RAISE_MORE = 3
+    ALLIN = 4
 
 
 def getTotalCards():
@@ -108,7 +109,7 @@ class dqnModel():
         #self._state = [0] * 52 * 2 + [0] * 52 * 5 + [0] *4 # { my 2 card (one hot), community 5 card (one hot), total_pot, my_stack, to_call, win_prob) ]
         self._state = [0] * 52 * 2 + [0] * 52 * 5 + [0] * 9 + [0] * 5 # { my 2 card (one hot), community 5 card (one hot), opponent's action(10 opponents), total_pot, my_stack, to_call, my_betting, win_prob) ]
         # add new initial
-        self.action_size = 4
+        self.action_size = 5
         self.learning_rate = 0.001
         self.model = self._build_model()
         self.target_model = self._build_model()
@@ -535,7 +536,7 @@ class dqnModel():
             return action.Fold()
         elif react == dqnAction.CALL:# and state.community_state.to_call < int(stack / 15):
             return action.Call()
-        elif react == dqnAction.RAISE:
+        elif react == dqnAction.RAISE_LESS:
             raise_amount = state.community_state.to_call + int(stack / 25)
             return action.Raise(raise_upper, min_raise, raise_amount)
             #if state.community_state.to_call < int(stack / 10):
@@ -543,9 +544,11 @@ class dqnModel():
             #    return action.Raise(raise_upper, min_raise, raise_amount)
             #else:
             #    return action.Call()
-        elif react == dqnAction.ALLIN:
+        elif react == dqnAction.RAISE_MORE:
             raise_amount = state.community_state.to_call + int(stack / 10)
             return action.Raise(raise_upper, min_raise, raise_amount)
+        elif react == dqnAction.ALLIN:
+            return action.AllIn(playerid)
             #if state.community_state.to_call < int(stack / 5):
             #    #return action.AllIn(playerid)
             #    raise_amount = state.community_state.to_call + int(stack / 5)

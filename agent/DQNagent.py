@@ -119,7 +119,7 @@ class dqnModel():
         
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
-        self.epsilon = 1.0  # exploration rate
+        self.epsilon = 0.01#1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
@@ -380,7 +380,7 @@ class dqnModel():
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
-    def onlineTrainModel(self):
+    def _onlineTrainModel(self):
         history = History()
         #state, action, reward, next_state, done = self.memory[-1]
         action, reward, state, next_state, done = self.memory[-1]
@@ -396,6 +396,28 @@ class dqnModel():
         #if len(self.memory) % 20 == 0:
         self.saveModel()
         #self.saveMemory()
+
+    def onlineTrainModel(self):
+        history = History()
+        #state, action, reward, next_state, done = self.memory[-1]
+        action, reward, state, next_state, done = self.memory[-1]
+
+        target = self.model.predict(state)
+        target_val = self.model.predict(next_state)
+        target_val_ = self.target_model.predict(next_state)
+
+        if done:
+            target[0][action] = reward
+        else:
+            a = np.argmax(target_val)
+            target[0][action] = reward + self.gamma * target_val_[0][a]
+
+        self.model.fit(state, target, epochs=1, verbose=0, callbacks=[history])
+        print(history.history)
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+        #if len(self.memory) % 20 == 0:
+        self.saveModel()
 
     def saveMemory(self):
         memoryfile=self.MemoryPath

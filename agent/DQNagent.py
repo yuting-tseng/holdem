@@ -371,34 +371,43 @@ class dqnModel():
             return card_hot
 
     def batchTrainModel(self, batch_size):
-        minibatch = random.sample(self.memory, batch_size)
-        #for state, action, reward, next_state in minibatch:
-        for action, reward, state, next_state in minibatch:
-            target = reward
-            if not done:
-                target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
-            target_f = self.model.predict(state)
-            target_f[0][action] = target
-            self.model.fit(state, target_f, epochs=1, verbose=0)
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
-
-    def _onlineTrainModel(self):
+        def batch(iterable, n=1):
+            l = len(iterable)
+            for ndx in range(0, l, n):
+                yield iterable[ndx:min(ndx + n, l)]
+                
+        def get_memory():
+            with open(self.MemoryPath) as f:
+                content = f.readlines()
+            content = [json.loads(x.strip()) for x in content] 
+            return content
+        
         history = History()
-        #state, action, reward, next_state, done = self.memory[-1]
-        action, reward, state, next_state, done = self.memory[-1]
-        target = reward
-        if not done:
-            target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
-        target_f = self.model.predict(state)
-        target_f[0][action] = target
-        self.model.fit(state, target_f, epochs=1, verbose=0, callbacks=[history])
-        print(history.history)
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
-        #if len(self.memory) % 20 == 0:
-        self.saveModel()
-        #self.saveMemory()
+        memory = get_memory()
+        
+        for minibatch in batch(memory, batch_size):
+
+            for action, reward, state, next_state, done in minibatch:
+                state = np.array(state)
+                next_state = np.array(next_state)
+
+                target = self.model.predict(state)
+                target_val = self.model.predict(next_state)
+                target_val_ = self.target_model.predict(next_state)
+
+                if done:
+                    target[0][action] = reward
+                else:
+                    a = np.argmax(target_val)
+                    target[0][action] = reward + self.gamma * target_val_[0][a]
+
+                self.model.fit(state, target, epochs=1, verbose=0, callbacks=[history])
+                print(history.history)
+                if self.epsilon > self.epsilon_min:
+                    self.epsilon *= self.epsilon_decay
+
+            self.saveModel()
+        return None
 
     def onlineTrainModel(self):
         history = History()
@@ -541,22 +550,11 @@ class dqnModel():
         elif react == dqnAction.RAISE_LESS:
             raise_amount = state.community_state.to_call + int(stack / 25)
             return action.Raise(raise_upper, min_raise, raise_amount)
-            #if state.community_state.to_call < int(stack / 10):
-            #    raise_amount = state.community_state.to_call + int(stack / 15)
-            #    return action.Raise(raise_upper, min_raise, raise_amount)
-            #else:
-            #    return action.Call()
         elif react == dqnAction.RAISE_MORE:
             raise_amount = state.community_state.to_call + int(stack / 10)
             return action.Raise(raise_upper, min_raise, raise_amount)
         elif react == dqnAction.ALLIN:
             return action.AllIn(playerid)
-            #if state.community_state.to_call < int(stack / 5):
-            #    #return action.AllIn(playerid)
-            #    raise_amount = state.community_state.to_call + int(stack / 5)
-            #    return action.Raise(raise_upper, min_raise, raise_amount)
-            #else:
-            #    return action.Call()
         else: 
             raise ValueError('react not found')
 

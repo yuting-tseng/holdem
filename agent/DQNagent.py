@@ -120,7 +120,7 @@ class dqnModel():
         
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
-        self.epsilon = 0.01#1.0  # exploration rate
+        self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
@@ -134,7 +134,7 @@ class dqnModel():
         self.last_action = None
         self.stack_init = 0
 
-        # self.update_target_model()
+        self.update_target_model()
     
     def get_ModelPath(self):
         if not os.path.isdir(self.ModelDir):
@@ -293,14 +293,16 @@ class dqnModel():
 
         hand_cards = get_card_class(state.player_states[playerid].hand)
         board_cards = get_card_class(state.community_card)
+        if len(board_cards) < 3:
+            return self.get_win_prob(state, playerid)
         #Card.print_pretty_cards(board_cards + hand_cards)
         rank = evaluator.evaluate(hand_cards, board_cards)
-        opercentage = 1.0 - evaluator.get_five_card_rank_percentage(rank)
+        percentage = 1.0 - evaluator.get_five_card_rank_percentage(rank)
         #rank_class = evaluator.get_rank_class(rank)
         #class_string = evaluator.class_to_string(rank_class)
         #percentage = 1.0 - evaluator.get_five_card_rank_percentage(rank)  # higher better here
-        return rank, percentage
-        #return percentage
+        #return rank, percentage
+        return percentage
 
     def get_opponent_action(self, state, playerid):
         actions = list()
@@ -329,9 +331,9 @@ class dqnModel():
         my_betting = observation.player_states[playerid].betting
         total_pot = observation.community_state.totalpot
         to_call = observation.community_state.to_call
-        #rank, win_rate = self.eval_card_rank(observation, playerid)
+        win_rate = self.eval_card_rank(observation, playerid)
         #rank = self.eval_card_rank(observation, playerid)
-        win_rate = self.get_win_prob(observation, playerid)
+        #win_rate = self.get_win_prob(observation, playerid)
         opponent_action = self.get_opponent_action(observation, playerid)
         return self.__turn_card_to_one_hot(my_card[0]) + \
                self.__turn_card_to_one_hot(my_card[1])+ \
@@ -445,7 +447,7 @@ class dqnModel():
     def loadModel(self):
         if os.path.isfile(self.get_ModelPath()):
             self.model.load_weights(self.get_ModelPath())
-            self.target_model.load_weights(self.get_ModelPath())
+            #self.target_model.load_weights(self.get_ModelPath())
 
 
     def getReward(self, state, playerid):

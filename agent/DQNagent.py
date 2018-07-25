@@ -134,7 +134,8 @@ class dqnModel():
         self.last_action = None
         self.stack_init = 0
 
-        self.update_target_model()
+        try:
+            self.update_target_model()
     
     def get_ModelPath(self):
         if not os.path.isdir(self.ModelDir):
@@ -482,17 +483,17 @@ class dqnModel():
         final_ranking = get_final_ranking()
 
         reward = state.player_states[playerid].stack - self.stack_init
-        if min(final_ranking) == final_ranking[playerid] and reward <= 0: # if player could win but not win 
-            reward = -1.0 * state.community_state.totalpot
-        elif reward > 0:
-            if final_ranking[playerid] < 300:
-                reward *= 15
-            elif final_ranking[playerid] < 700:
-                reward *= 10
-            elif final_ranking[playerid] < 1500:
-                reward *= 5
-            elif final_ranking[playerid] < 3000:
-                reward *= 3
+        # if min(final_ranking) == final_ranking[playerid] and reward <= 0: # if player could win but not win 
+        #     reward = -1.0 * state.community_state.totalpot
+        # elif reward > 0:
+        #     if final_ranking[playerid] < 300:
+        #         reward *= 15
+        #     elif final_ranking[playerid] < 700:
+        #         reward *= 10
+        #     elif final_ranking[playerid] < 1500:
+        #         reward *= 5
+        #     elif final_ranking[playerid] < 3000:
+        #         reward *= 3
         return reward
 
     def RoundEndAction(self, state, playerid): 

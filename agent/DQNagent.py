@@ -136,6 +136,8 @@ class dqnModel():
 
         try:
             self.update_target_model()
+        except:
+            pass
     
     def get_ModelPath(self):
         if not os.path.isdir(self.ModelDir):

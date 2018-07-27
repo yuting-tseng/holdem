@@ -78,9 +78,11 @@ class Action():
     def AllIn(self, playerid):
         return ACTION(action_table.RAISE, self.state.player_states[playerid].stack) # all in
     
-    def Call(self): 
+    def Call(self, playerid): 
         if self.state.community_state.to_call == 0:
             return ACTION(action_table.CHECK, 0)
+        elif self.state.community_state.to_call > self.state.player_states[playerid].stack / 20: 
+            return self.Fold()
         else:
             return ACTION(action_table.CALL, self.state.community_state.to_call)
     
@@ -523,21 +525,23 @@ class dqnModel():
         action = Action(state)
 
         #print('last state none :', self.last_state == None)
-        if self.last_state == None:
-            win_rate = self.get_win_prob(state, playerid)
-            call_upper = win_rate * state.player_states[playerid].stack * 0.3
-            self.last_state = state
-            self.stack_init = state.player_states[playerid].stack + state.player_states[playerid].betting
-            if call_upper > state.community_state.to_call:
-                self.last_action = dqnAction.CALL
-                return action.Call()
-            else:
-                self.last_action = dqnAction.FOLD
-                return action.Fold()
+        # if self.last_state == None:
+        #     win_rate = self.get_win_prob(state, playerid)
+        #     call_upper = win_rate * state.player_states[playerid].stack * 0.3
+        #     self.last_state = state
+        #     self.stack_init = state.player_states[playerid].stack + state.player_states[playerid].betting
+        #     if call_upper > state.community_state.to_call:
+        #         self.last_action = dqnAction.CALL
+        #         return action.Call(playerid)
+        #     else:
+        #         self.last_action = dqnAction.FOLD
+        #         return action.Fold()
 
-        reward = 0
-        self.remember(self.last_state, self.last_action, reward, state, 0, playerid)
-        self.onlineTrainModel()
+        if self.last_state != None:
+            reward = 0
+            self.remember(self.last_state, self.last_action, reward, state, 0, playerid)
+            self.onlineTrainModel()
+            self.stack_init = state.player_states[playerid].stack + state.player_states[playerid].betting
 
         self.last_state = state
         
@@ -554,7 +558,7 @@ class dqnModel():
         if react == dqnAction.FOLD:
             return action.Fold()
         elif react == dqnAction.CALL:# and state.community_state.to_call < int(stack / 15):
-            return action.Call()
+            return action.Call(playerid)
         elif react == dqnAction.RAISE_LESS:
             raise_amount = state.community_state.to_call + int(stack / 25)
             return action.Raise(raise_upper, raise_amount)

@@ -70,25 +70,27 @@ class Action():
         self.state = state
 
     def Fold(self):
-        #print('FOLD')
         if self.state.community_state.to_call == 0:
             return ACTION(action_table.CHECK, 0)
         else:
             return ACTION(action_table.FOLD, 0)
     
     def AllIn(self, playerid):
-        #print("All in")
         return ACTION(action_table.RAISE, self.state.player_states[playerid].stack) # all in
     
     def Call(self): 
-        #print("Call")
         if self.state.community_state.to_call == 0:
             return ACTION(action_table.CHECK, 0)
         else:
             return ACTION(action_table.CALL, self.state.community_state.to_call)
     
-    def Raise(self, raise_upper, min_raise, raise_amount):
-        #print("Raise")
+    def Raise(self, raise_upper, raise_amount):
+        if raise_amount > raise_upper: # call
+            return ACTION(action_table.CALL, raise_upper)
+        else:
+            return ACTION(action_table.RAISE, raise_amount)
+    
+    def _Raise(self, raise_upper, min_raise, raise_amount):
         if min([raise_upper, min_raise, raise_amount]) == raise_upper: # fold
             #print("Raise amount too high")
             return self.Fold()
@@ -120,7 +122,7 @@ class dqnModel():
         
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
-        self.epsilon = 1.0  # exploration rate
+        self.epsilon = 0.1#1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
@@ -135,9 +137,9 @@ class dqnModel():
         self.stack_init = 0
 
         try:
-            self.update_target_model()
+        	self.update_target_model()
         except:
-            pass
+        	pass
     
     def get_ModelPath(self):
         if not os.path.isdir(self.ModelDir):
@@ -387,12 +389,15 @@ class dqnModel():
         
         history = History()
         memory = get_memory()
+        i = 1
         
         for minibatch in batch(memory, batch_size):
-
             for action, reward, state, next_state, done in minibatch:
                 state = np.array(state)
                 next_state = np.array(next_state)
+                action = int(action)
+                reward = int(reward)
+                done = int(done)
 
                 target = self.model.predict(state)
                 target_val = self.model.predict(next_state)
@@ -403,7 +408,8 @@ class dqnModel():
                 else:
                     a = np.argmax(target_val)
                     target[0][action] = reward + self.gamma * target_val_[0][a]
-
+                i+=1
+                    
                 self.model.fit(state, target, epochs=1, verbose=0, callbacks=[history])
                 print(history.history)
                 if self.epsilon > self.epsilon_min:
@@ -414,7 +420,6 @@ class dqnModel():
 
     def onlineTrainModel(self):
         history = History()
-        #state, action, reward, next_state, done = self.memory[-1]
         action, reward, state, next_state, done = self.memory[-1]
 
         target = self.model.predict(state)
@@ -428,7 +433,7 @@ class dqnModel():
             target[0][action] = reward + self.gamma * target_val_[0][a]
 
         self.model.fit(state, target, epochs=1, verbose=0, callbacks=[history])
-        print(history.history)
+        #print(history.history)
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
         #if len(self.memory) % 20 == 0:
@@ -485,17 +490,17 @@ class dqnModel():
         final_ranking = get_final_ranking()
 
         reward = state.player_states[playerid].stack - self.stack_init
-        # if min(final_ranking) == final_ranking[playerid] and reward <= 0: # if player could win but not win 
-        #     reward = -1.0 * state.community_state.totalpot
-        # elif reward > 0:
-        #     if final_ranking[playerid] < 300:
-        #         reward *= 15
-        #     elif final_ranking[playerid] < 700:
-        #         reward *= 10
-        #     elif final_ranking[playerid] < 1500:
-        #         reward *= 5
-        #     elif final_ranking[playerid] < 3000:
-        #         reward *= 3
+        if min(final_ranking) == final_ranking[playerid] and reward <= 0: # if player could win but not win 
+            reward = -1.0 * state.community_state.totalpot
+        #elif reward > 0:
+        #    if final_ranking[playerid] < 300:
+        #        reward *= 15
+        #    elif final_ranking[playerid] < 700:
+        #        reward *= 10
+        #    elif final_ranking[playerid] < 1500:
+        #        reward *= 5
+        #    elif final_ranking[playerid] < 3000:
+        #        reward *= 3
         return reward
 
     def RoundEndAction(self, state, playerid): 
@@ -537,7 +542,7 @@ class dqnModel():
         self.last_state = state
         
         min_raise = max(state.community_state.lastraise * 2, state.community_state.bigblind) 
-        raise_upper = state.player_states[playerid].stack / 4
+        raise_upper = state.player_states[playerid].stack
 
         stack = state.player_states[playerid].stack
         if stack > 5000:
@@ -552,10 +557,10 @@ class dqnModel():
             return action.Call()
         elif react == dqnAction.RAISE_LESS:
             raise_amount = state.community_state.to_call + int(stack / 25)
-            return action.Raise(raise_upper, min_raise, raise_amount)
+            return action.Raise(raise_upper, raise_amount)
         elif react == dqnAction.RAISE_MORE:
             raise_amount = state.community_state.to_call + int(stack / 10)
-            return action.Raise(raise_upper, min_raise, raise_amount)
+            return action.Raise(raise_upper, raise_amount)
         elif react == dqnAction.ALLIN:
             return action.AllIn(playerid)
         else: 

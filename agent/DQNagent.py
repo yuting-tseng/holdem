@@ -122,7 +122,7 @@ class dqnModel():
         
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
-        self.epsilon = 1.0  # exploration rate
+        self.epsilon = 0.3#1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
@@ -395,6 +395,9 @@ class dqnModel():
             for action, reward, state, next_state, done in minibatch:
                 state = np.array(state)
                 next_state = np.array(next_state)
+                action = int(action)
+                reward = int(reward)
+                done = int(done)
 
                 target = self.model.predict(state)
                 target_val = self.model.predict(next_state)

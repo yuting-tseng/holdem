@@ -431,7 +431,7 @@ class dqnModel():
         if done:
             target[0][action] = reward
         else:
-            a = np.argmax(target_val)
+            a = np.argmax(target_val_)
             target[0][action] = reward + self.gamma * target_val_[0][a]
 
         self.model.fit(state, target, epochs=1, verbose=0, callbacks=[history])

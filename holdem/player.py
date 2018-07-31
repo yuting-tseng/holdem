@@ -119,7 +119,8 @@ class Player(object):
                 if self._roundRaiseCount > self._roundRaiseLimit:
                     raise error.Error('raise times ({}) in this round had exceed limitation ({})'.format(self._roundRaiseCount, self._roundRaiseLimit))
                 if raise_amount < minraise:
-                    raise error.Error('raise must be greater than minraise {}'.format(minraise))
+                    #raise error.Error('raise must be greater than minraise {}'.format(minraise))
+                    pass
                 if raise_amount > self.stack:
                     raise error.Error('raise must be less than maxraise {}'.format(self.stack))
                 move_tuple = ('raise', raise_amount)

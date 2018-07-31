@@ -16,6 +16,7 @@ from keras import backend as K
 from keras.losses import binary_crossentropy
 from collections import deque
 from keras.callbacks import History 
+import itertools
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -138,11 +139,6 @@ class dqnModel():
         self.last_action = None
         self.stack_init = 0
 
-        try:
-            self.update_target_model()
-        except:
-            pass
-    
     def get_ModelPath(self):
         if not os.path.isdir(self.ModelDir):
             os.mkdir(self.ModelDir)
@@ -377,22 +373,24 @@ class dqnModel():
                 card_hot[card_idx] = 1
             return card_hot
 
+    def get_memory(self):
+        with open(self.MemoryPath) as f:
+            content = f.readlines()
+        content = [json.loads(x.strip()) for x in content] 
+        start = max(0, len(content)-self.memory.maxlen)
+        for data in content[start:]:
+            self.memory.append(data)
+
     def batchTrainModel(self, batch_size):
         def batch(iterable, n=1):
             l = len(iterable)
             for ndx in range(0, l, n):
-                yield iterable[ndx:min(ndx + n, l)]
+                yield list(itertools.islice(iterable, ndx, min(ndx + n, l)))
                 
-        def get_memory():
-            with open(self.MemoryPath) as f:
-                content = f.readlines()
-            content = [json.loads(x.strip()) for x in content] 
-            return content
-        
         history = History()
-        memory = get_memory()
+        self.get_memory()
         
-        for minibatch in batch(memory, batch_size):
+        for minibatch in batch(self.memory, batch_size):
 
             for action, reward, state, next_state, done in minibatch:
                 state = np.array(state)
@@ -416,30 +414,38 @@ class dqnModel():
                 if self.epsilon > self.epsilon_min:
                     self.epsilon *= self.epsilon_decay
 
-            self.saveModel()
+        self.saveModel()
         return None
 
-    def onlineTrainModel(self):
+    def onlineTrainModel(self, batch_size=24):
+        def batch(iterable, n=1):
+            l = len(iterable)
+            for ndx in range(0, l, n):
+                yield list(itertools.islice(iterable, ndx, min(ndx + n, l)))
+        
         history = History()
-        #state, action, reward, next_state, done = self.memory[-1]
-        action, reward, state, next_state, done = self.memory[-1]
-
-        target = self.model.predict(state)
-        target_val = self.model.predict(next_state)
-        target_val_ = self.target_model.predict(next_state)
-
-        if done:
-            target[0][action] = reward
-        else:
-            a = np.argmax(target_val_)
-            target[0][action] = reward + self.gamma * target_val_[0][a]
-
-        self.model.fit(state, target, epochs=1, verbose=0, callbacks=[history])
+        batch_data = list(batch(self.memory, batch_size))
+        selected_batch = random.sample(batch_data, 1)
+        
+        for action, reward, state, next_state, done in selected_batch[0]:
+        
+            target = self.model.predict(state)
+            target_val = self.model.predict(next_state)
+            target_val_ = self.target_model.predict(next_state)
+        
+            if done:
+                target[0][action] = reward
+            else:
+                a = np.argmax(target_val_)
+                target[0][action] = reward + self.gamma * target_val_[0][a]
+        
+            self.model.fit(state, target, epochs=1, verbose=0, callbacks=[history])
         print(history.history)
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
-        #if len(self.memory) % 20 == 0:
-        self.saveModel()
+        if len(self.memory) % 20 == 0:
+            self.saveModel()
+            self.update_target_model()
 
     def saveMemory(self):
         memoryfile=self.MemoryPath
